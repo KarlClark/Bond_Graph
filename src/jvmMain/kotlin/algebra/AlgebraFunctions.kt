@@ -1561,7 +1561,7 @@ fun replaceToken(token: Token, newToken: Token, expr: Expr): Expr{
     return term
 }
 
-fun replaceTokens(equation: Equation, replacementMap: Map<Token, Token>): Equation{
+/*fun replaceTokens(equation: Equation, replacementMap: Map<Token, Token>): Equation{
 
     var token: Token
     val leftSidePlusTerms = arrayListOf<Expr>()
@@ -1583,6 +1583,10 @@ fun replaceTokens(equation: Equation, replacementMap: Map<Token, Token>): Equati
                 } else {
                     newPlusTerms.add(expr)
                 }
+            }
+
+            is Number -> {
+                newPlusTerms.add(expr)
             }
 
             is Term -> {
@@ -1633,8 +1637,58 @@ fun replaceTokens(equation: Equation, replacementMap: Map<Token, Token>): Equati
         rightSide = sum
     }
      return Equation(leftSide, rightSide)
+}*/
+
+fun replaceTokens(equation: Equation, replacementMap: Map<Token, Token>): Equation{
+
+    fun processToken(token: Token): Token {
+        val newToken = replacementMap[token]
+        if (newToken != null) {
+            return newToken
+        }
+    return token
 }
 
+    fun processTerm(term: Term, processList: (sourceList: ArrayList<Expr>, destList: ArrayList<Expr>) -> Unit): Term {
+
+        val newTerm = Term()
+        processList(term.numerators, newTerm.numerators)
+        processList(term.denominators, newTerm.denominators)
+        return newTerm
+    }
+
+    fun processSum(sum: Sum, processList: (sourceList: ArrayList<Expr>, destList: ArrayList<Expr>) -> Unit): Sum {
+        val newSum = Sum()
+        processList(sum.plusTerms, newSum.plusTerms)
+        processList(sum.minusTerms, newSum.minusTerms)
+        return newSum
+    }
+
+    fun processList(sourceList: ArrayList<Expr>, destList: ArrayList<Expr>) {
+
+        sourceList.forEach {
+            when (it) {
+
+                is Token -> destList.add(processToken(it))
+                is kotlin.Number -> destList.add(it)
+                is Term -> destList.add(processTerm(it, ::processList))
+                is Sum -> destList.add(processSum(it, ::processList))
+            }
+        }
+    }
+
+    fun processExpr(expr: Expr): Expr {
+        return when(expr) {
+            is Token -> processToken(expr)
+            is kotlin.Number -> expr
+            is Term -> processTerm(expr, ::processList)
+            is Sum -> processSum(expr,::processList)
+            else -> throw IllegalArgumentException ("Unknown Expr, expr = ${expr.toAnnotatedString()} : ${expr::class.simpleName}")
+        }
+    }
+
+    return Equation(processExpr(equation.leftSide), processExpr(equation.rightSide))
+}
 /*
     Each term in the sum is basically a coefficient times a state variable.  There may be
     several terms for any given state variable.  This function creates a new sum where there
