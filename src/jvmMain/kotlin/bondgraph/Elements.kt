@@ -1064,8 +1064,8 @@ class Resistor (bondGraph: BondGraph, id: Int, elementType: ElementTypes, displa
         val bond = bondsList[0]
 
         vToken = Token(bond.displayId, "", elementType.toAnnotatedString(), false, false, false, false)
-        efToken = Token(bond.displayId, "", AnnotatedString("e"), false, false, false, false)
-        fToken = Token(bond.displayId, "", AnnotatedString("f"), false, false, false, false)
+        efToken = Token(bond.displayId, "", AnnotatedString("e"), true, false, false, false)
+        fToken = Token(bond.displayId, "", AnnotatedString("f"), true, false, false, false)
     }
 
 
