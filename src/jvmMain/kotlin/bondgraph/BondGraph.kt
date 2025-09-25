@@ -920,11 +920,13 @@ class BondGraph(var name: String) {
 
             if (! causalityComplete()) throw BadGraphException("Error: Graph is not completely augmented")
 
+            println("number of arbitrarily assigned resistors is ${arbitrarilyAssignedResistors.size}")
             if (arbitrarilyAssignedResistors.size > 0){
                 arbitrarilyAssignedResistors.forEach {
                     (it as Resistor).substituteExpression = null
                     println("calling deriveEquation on ${it.displayId}")
                     simultaneousEquationsMap[it] = ((it).deriveEquation())
+                    println("derived equation = ${simultaneousEquationsMap[it]?.toAnnotatedString()}")
                     if (displayIntermediateResults) results.add(AnnotatedString("1- ") + simultaneousEquationsMap[it]?.toAnnotatedString()!!)
                 }
             }
