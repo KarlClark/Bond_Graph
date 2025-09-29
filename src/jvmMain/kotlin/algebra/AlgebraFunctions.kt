@@ -160,6 +160,16 @@ fun testCases(){
     val equations3 = Matrix.solveCramer(coeff3, variables3, const3)
     println ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
     equations3.forEach { println("${it.toAnnotatedString()}") }
+
+    val builder7 = Matrix.Builder(2)
+    builder7.add(Number(7.0)).add(Number(2.0))
+        .add(Number(0.0)).add(Number(4.0))
+    val coeff4 = builder7.build()
+    val const4 = arrayListOf<Expr>(Number(20.0), Number(12.0))
+    val equations4 = Matrix.solveCramer(coeff4, variables, const4)
+    println ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+    equations4.forEach { println("${it.toAnnotatedString()}") }
+
 }
 
 fun testCases2 (){
@@ -242,6 +252,57 @@ fun testCases2 (){
 
 }
 
+class TokenAndTerm(var token: Token? = null, var term: Expr = Term())
+
+fun getTokenAndTerm(expr: Expr): TokenAndTerm {
+
+    when (expr) {
+
+        is Token -> {
+            if (expr.energyVar || expr.powerVar) {
+                return TokenAndTerm(expr, Number(1.0))
+            } else {
+                return(TokenAndTerm(null, expr))
+            }
+        }
+
+        is Number -> {
+            return TokenAndTerm(null, expr)
+        }
+
+        is Term -> {
+            val term = Term()
+            val tokenAndTerm = TokenAndTerm()
+
+            expr.numerators.forEach {
+                if (it is Token && (it.powerVar || it.energyVar)) {
+                    tokenAndTerm.token = it
+                } else {
+                    term.numerators.add(it)
+                }
+            }
+
+            term.denominators.addAll(expr.denominators)
+
+            tokenAndTerm.term = rationalizeTerm(term)
+            return tokenAndTerm
+        }
+
+        is Sum -> {
+            if (expr.plusTerms.size == 0 && expr.minusTerms.size == 1) {
+                val tokenAndTerm = getTokenAndTerm(expr.minusTerms[0])
+                val sum = Sum()
+                sum.minusTerms.add(tokenAndTerm.term)
+                return TokenAndTerm(tokenAndTerm.token, sum)
+            } else {
+                return TokenAndTerm(null, expr)
+            }
+        }
+    }
+
+    return TokenAndTerm(null, expr)
+}
+
 fun printExpr(expr: Expr, printStars: Boolean = true){
     if (printStars) {
         println("*** expr = ${expr.toAnnotatedString()}: ${expr::class.simpleName}")
@@ -270,7 +331,7 @@ function takes a Term (that is not a fraction) and expands it to an arraylist of
 
 Note: A Sum can also mask a single Token.  I call these hanging sums. But we don't deal with that here
 since a Sum can also be controlling the sign of the whole Term.  These Sums crop up when simplifying
-a Sum like (a + b -a). After simplifying we are left with a Sum with just one Token b. The implifySumss
+a Sum like (a + b -a). After simplifying we are left with a Sum with just one Token b. The simplifySums
 function resolves these to single Tokens.  But as this code evolves, such sums may crop up in other areas.
  */
 
@@ -305,7 +366,7 @@ function resolves these to single Tokens.  But as this code evolves, such sums m
     return num
 }*/
 
-fun stripCoefficientFromList(source: ArrayList<Expr>, dest1: ArrayList<Expr>, dest2: ArrayList<Expr>, startNum: Double,
+fun stripCoefficientFromList(source: ArrayList<Expr>, dest1: ArrayList<Expr>, q: ArrayList<Expr>, startNum: Double,
                              operation1: (Double, Double) -> Double, operation2: (Double, Double) -> Double): Double {
     var num = startNum
     source.forEach {
@@ -507,6 +568,9 @@ fun getExprFromCoefficientAndExpr(coefficientAndExpr: CoefficientAndExpr): Expr 
 }
 
 fun negate(sum: Sum): Sum {
+    /*
+    Switch the plusterms and the minusterms.  Effectively multiplies the sum by -1.
+     */
     val newSum = Sum()
     newSum.plusTerms.addAll(sum.minusTerms)
     newSum.minusTerms.addAll(sum.plusTerms)
@@ -514,6 +578,12 @@ fun negate(sum: Sum): Sum {
 }
 
 fun checkForNegativeTerm(term: Term): Expr {
+
+    /*
+    If this term is a negative sum divided by a negative sum then return a positive term.
+    If the term has a negative sum in either the numerator or denominator, then return a negative sum of the term.
+    I.e. -a/-b becomes a/b  and a/-b would become -(a/b)
+     */
 
     val newTerm = Term()
     val sum = Sum()
@@ -1336,7 +1406,7 @@ fun convertExpressionNumeratorToCommonDenominator(expr: Expr, commonDenominator:
 
     val copyOfCommonDenominator = arrayListOf<Expr>()
 
-    if (expr is Token || expr is Sum) {
+    if (expr !is Term) {
         // no denominator. Multiply the entire expression by the common denominator
         val term = Term()
         term.numerators.add(expr)
@@ -1504,7 +1574,7 @@ fun factor  (token: Token, expr: Expr): Expr {
     and inertia or the derivative of a displacement or momentum.
     Everything else in the term is coefficient of the state
     variable.  So this function looks at term and figures out
-    which token is the state variablke.
+    which token is the state variable.
  */
 fun getStateToken(expr: Expr): Token {
 
@@ -1522,7 +1592,7 @@ fun getStateToken(expr: Expr): Token {
         }
     }
 
-    throw AlgebraException("Error: getKeyToken called on term with no power or energy variable = ${expr.toAnnotatedString()}")
+    throw AlgebraException("Error: getStateToken called on term with no power or energy variable = ${expr.toAnnotatedString()}")
 }
 
 fun replaceToken(token: Token, newToken: Token, expr: Expr): Expr{
@@ -1699,7 +1769,48 @@ fun replaceTokens(equation: Equation, replacementMap: Map<Token, Token>): Equati
              (P1R1R3 + P1R5R2)/R2R3 + (q7R3R6 -q7R4(R1 = R2))/R6(R1 + R2)
     This function does not factor out the state variable.  This is done in a separate step.
  */
-fun gatherLikeTerms(sum: Sum):Expr {
+
+fun gatherLikeTerms(expr: Expr): Expr {
+    val termsMap = mutableMapOf<Token,Expr>()
+
+    fun groupTerms(source: ArrayList<Expr>, isPlusTerm: Boolean) {
+        //println("group terms terms= "); source.forEach { println(it.toAnnotatedString()) }
+        for (expr in source){
+            val token = getStateToken(expr)
+            var newExpr: Expr
+            if (expr is Token){
+                newExpr = Number(1.0)
+            } else {
+                newExpr = expr.clone()
+                (newExpr as Term).numerators.remove(token)
+            }
+            if (termsMap.containsKey(token)) {
+                //key already exist so add/subtract this expr from the sum
+                var mapExpr = termsMap[token]
+                if (mapExpr != null) {
+                    mapExpr = if (isPlusTerm) mapExpr.add(newExpr) else mapExpr.subtract(newExpr)
+                    termsMap[token] = mapExpr
+                }
+            } else {
+                // new key so create new entry.
+                termsMap[token] = if (isPlusTerm) newExpr else Sum().subtract(newExpr)
+            }
+        }
+    }
+
+    when (expr) {
+
+        is Number -> throw IllegalArgumentException("groupLikeTerm called with a Expr that is just a single Number, expr = ${expr.toAnnotatedString()}")
+
+        is Token -> {
+            if (expr.energyVar == false && expr.powerVar == false){
+                throw IllegalArgumentException("groupLikeTerm called with a Expr that is just a single Token that is not a power or energy variable, expr = ${expr.toAnnotatedString()}")
+
+            }
+        }
+    }
+}
+fun gatherLikeTerms_old(sum: Sum):Expr {
    val termsMap = mutableMapOf<Token,Expr>()
 
     // Add/subtract each term in the array list to the appropriate sum in
@@ -1844,15 +1955,23 @@ fun solve (token: Token, equation: Equation): Equation {
 
 fun solveSimultaneousEquations(equations: Map<Element, Equation>): LinkedHashMap<Element, Equation> {
 
-    val solvedEquations = linkedMapOf<Element, Equation>()
+    val singleSolvedEquations = linkedMapOf<Element, Equation>()
+    val simutanelouselySolvedEquations = linkedMapOf<Element, Equation>()
+    val tokensToElementsMap = hashMapOf<Token, Element>()
 
-    if (equations.size == 1) {
-        equations.forEach{(key, value) -> solvedEquations[key] = solve((value.leftSide as Token), value)}
-        return solvedEquations
+    equations.forEach {key, value ->
+        if (value.leftSide is Token) {
+            tokensToElementsMap[value.leftSide as Token] = key
+        } else {
+            throw IllegalArgumentException("Left side of equation must be a token. Equation = ${value.toAnnotatedString()}")
+        }
     }
-    /*
-    TODO    implement solving set of simultaneous equations.
-     */
-    equations.forEach { (key, value) -> solvedEquations[key] = Equation(Term(), Term()) }
-    return solvedEquations
+
+    equations.forEach{key, value ->
+        val token = equations[key]?.rightSide as Token
+        if (token != null) {
+            singleSolvedEquations[key] = equations[key]?.let { solve(token, it) }!!
+        }
+    }
+
 }
