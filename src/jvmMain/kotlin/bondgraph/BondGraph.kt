@@ -19,6 +19,8 @@ import userInterface.showResults
 import java.util.LinkedList
 var displayIntermediateResults = true
 
+//test comment
+
 class BadGraphException (message: String) : Exception(message)
 class AlgebraException (message: String) : Exception(message)
 
