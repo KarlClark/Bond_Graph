@@ -15,6 +15,10 @@ build/
 settings.gradle/
 gradlew
 gradlew.bat
+build.gradle.kts
+gradle.properties
+settings.gradle.kts
+gradle/
 build/
 *.log
 *.iws
