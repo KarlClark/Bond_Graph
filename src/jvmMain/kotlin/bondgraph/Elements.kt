@@ -145,7 +145,13 @@ enum class PowerVar {
 }
 
 enum class Operation {
-    MULTIPLY {
+    ADD {
+        override fun toString() = "add"
+    }
+    ,SUBTRACT {
+        override fun toString() = "subtract"
+    }
+    ,MULTIPLY {
         override fun toString() = "multiply"
     }
     ,DIVIDE {
@@ -158,6 +164,8 @@ enum class Operation {
     companion object{
         fun toEnum(string: String): Operation {
             when (string){
+                "add" -> return ADD
+                "subtract" -> return SUBTRACT
                 "multiply" -> return MULTIPLY
                 "divide" -> return DIVIDE
                 else -> return UNKNOWN
@@ -870,7 +878,7 @@ class ZeroJunction (bondGraph: BondGraph, id: Int, elementType: ElementTypes, di
         val effortBond = bondsList.filter{it.effortElement === this}[0]
 
         val effort = getOtherElement(this, effortBond).getEffort(effortBond)
-        println("$displayId returning effort = ${effort.toAnnotatedString()}")
+        //("$displayId returning effort = ${effort.toAnnotatedString()}")
         return effort
 
     }
@@ -941,7 +949,7 @@ class Capacitor (bondGraph: BondGraph, id: Int, elementType: ElementTypes, displ
     override fun getEffort(bond: Bond): Expr {
 
         if (valueExpr == null) throw BadGraphException("Error: getEffort called on ${displayId }but value has not been assigned.  Has assignValue() been called?")
-        return Term().multiply(eToken).divide(valueExpr as Expr)
+        return eToken.divide(valueExpr as Expr)
     }
 
     override fun deriveEquation(): Equation {
@@ -999,14 +1007,14 @@ class Inertia (bondGraph: BondGraph, id: Int, element: ElementTypes, displayData
 
     override fun getEffort(bond: Bond): Expr {
         if (substituteExpression == null) throw BadGraphException("Error: no substitute expression for Inertia in derivative causality = $displayId")
-        println("$displayId returning effort = ${(substituteExpression as Expr).toAnnotatedString()}")
+        //println("$displayId returning effort = ${(substituteExpression as Expr).toAnnotatedString()}")
         return (substituteExpression as Expr).clone()
     }
 
     override fun getFlow(bond: Bond): Expr {
 
         if (valueExpr == null) throw BadGraphException("Error: getEffort called on ${displayId }but value has not been assigned.  Has assignValue() been called?")
-        return Term().multiply(eToken).divide(valueExpr as Expr)
+        return eToken.divide(valueExpr as Expr)
     }
 
     override fun deriveEquation(): Equation {
@@ -1064,8 +1072,8 @@ class Resistor (bondGraph: BondGraph, id: Int, elementType: ElementTypes, displa
         val bond = bondsList[0]
 
         vToken = Token(bond.displayId, "", elementType.toAnnotatedString(), false, false, false, false)
-        efToken = Token(bond.displayId, "", AnnotatedString("e"), false, false, false, false)
-        fToken = Token(bond.displayId, "", AnnotatedString("f"), false, false, false, false)
+        efToken = Token(bond.displayId, "", AnnotatedString("e"), true, false, false, false)
+        fToken = Token(bond.displayId, "", AnnotatedString("f"), true, false, false, false)
     }
 
 
@@ -1095,7 +1103,7 @@ class Resistor (bondGraph: BondGraph, id: Int, elementType: ElementTypes, displa
             }
         } else {
             val sFlow = getOtherElement(this, bond).getFlow(bond)
-            return Term().multiply(sFlow).multiply(valueExpr as Expr)
+            return sFlow.multiply(valueExpr as Expr)
         }
     }
 
@@ -1108,7 +1116,7 @@ class Resistor (bondGraph: BondGraph, id: Int, elementType: ElementTypes, displa
             }
         } else {
             val sEffort = getOtherElement(this, bond).getEffort(bond)
-            return Term().multiply(sEffort).divide(valueExpr as Expr)
+            return sEffort.divide(valueExpr as Expr)
         }
     }
 
@@ -1117,10 +1125,10 @@ class Resistor (bondGraph: BondGraph, id: Int, elementType: ElementTypes, displa
         val otherElement = getOtherElement(this, bond)
         if (bond.effortElement === this){
             // Resistor is imposing flow on system so derive equation for the flow f = e/R
-            return Equation(fToken, Term().multiply(otherElement.getEffort(bond)).divide(valueExpr as Expr))
+            return Equation(fToken, otherElement.getEffort(bond).divide(valueExpr as Expr))
         } else {
             // Resistor is imposing effort on system so derive equation for effort e = fR
-            return Equation(efToken, Term().multiply(otherElement.getFlow(bond)).multiply(valueExpr as Expr))
+            return Equation(efToken, otherElement.getFlow(bond).multiply(valueExpr as Expr))
         }
     }
 }
@@ -1161,7 +1169,8 @@ class SourceOfEffort(bondGraph: BondGraph, id: Int, elementType: ElementTypes, d
 
 
     override fun getEffort(bond: Bond): Expr {
-        return Term().multiply(vToken)
+        //return Term().multiply(vToken)
+        return vToken
     }
 
     override fun deriveEquation(): Equation {
@@ -1202,12 +1211,13 @@ class SourceOfFlow (bondGraph: BondGraph, id: Int, elementType: ElementTypes, di
     }
 
     override fun getEffort(bond: Bond): Expr {
-        if (true) throw BadGraphException("Error: call to SourecOfFlow.getEffort()  which make no since and is clearly an error")
+        if (true) throw BadGraphException("Error: call to SourceOfFlow.getEffort()  which make no since and is clearly an error")
         return Term()
     }
 
     override fun getFlow(bond: Bond): Expr {
-        return Term().multiply(vToken)
+        println("SourceOfFlow.getFlow returning vToken = ${vToken.toAnnotatedString()}")
+        return vToken
     }
 
     override fun deriveEquation(): Equation {
