@@ -10,6 +10,9 @@ import java.text.NumberFormat
 import java.util.LinkedList
 import kotlin.math.absoluteValue
 import algebra.operations.*
+import bondgraph.Operation
+import bondgraph.Operation.*
+import algebra.printExpr
 
 /*
     This program can perform a limited amount of symbolic algebra, enough to generate and solve basic
@@ -44,23 +47,35 @@ import algebra.operations.*
     Expr's must also implement equals(Expr).  This is because we want different objects to possibly be equal.
     Example  (a + b) = (b + a)  or ab = ba.
  */
-
+ 
+enum class Sign {
+    POSITIVE {
+        override fun toString() = "positive"
+    },
+    NEGATIVE {
+        override fun toString() = "negative"
+    }
+}
 
 // Function for comparing two lists. For each element in the first list see if it exists in the second list.
 // The order doesn't matter.  Remove elements in the second list as they are found in case an element
 // occurs twice in the first list but only once in the second list.
+
 fun compareLists(list1: ArrayList<Expr>, list2: ArrayList<Expr>): Boolean {
-    val copyList2 = arrayListOf<Expr>()
+    val copyOfList2 = arrayListOf<Expr>()
+    val loopCopy = arrayListOf<Expr>()
     var foundOne: Boolean
+
+    copyOfList2.addAll(list2)
 
     for (e1 in list1){
         foundOne = false
-        copyList2.clear()
-        copyList2.addAll(list2)
-        for (e2 in copyList2) {
+        loopCopy.clear()
+        loopCopy.addAll(copyOfList2)
+        for (e2 in loopCopy) {
             if (e1.equals(e2)) {
                 foundOne = true
-                list2.remove(e2)
+                copyOfList2.remove(e2)
                 break
             }
         }
@@ -145,7 +160,9 @@ interface Expr{
 
     fun toAnnotatedString(exp: Int = 0): AnnotatedString
 
-    fun equals(expr: Expr): Boolean
+    //fun equals(expr: Expr): Boolean
+
+    override fun equals(o: Any?): Boolean
 
     fun clone(): Expr
 }
@@ -239,16 +256,29 @@ class Number(val value: Double = 0.0): Expr {
 
     override fun toAnnotatedString(exp: Int): AnnotatedString {
         val formatter = NumberFormat.getInstance()
-        formatter.maximumFractionDigits = 3
+        formatter.maximumFractionDigits = 6
         return AnnotatedString(formatter.format(value))
     }
 
-    override fun equals(expr: Expr): Boolean {
-        
+    override fun equals(o: Any?): Boolean {
+        /*
+        equals function must
+         */
+
+        if (this === o){
+            return true;
+        }
+
+        if (o !is Number){
+            return false
+        }
+
+       /* val expr = o as Number
         if (expr is Number) {
             return expr.value == value
-        }
-        return false
+        }*/
+
+        return o.value == value
     }
 
     override fun clone(): Expr {
@@ -294,9 +324,9 @@ class Token(
     }
 
     // An element object create only copy of each of its tokens so they can be compared at the object level.
-    override fun equals(expr: Expr): Boolean {
+    override fun equals(o: Any?): Boolean {
 
-        return this === expr
+        return this === o
     }
 
     override fun toAnnotatedString(exp: Int): AnnotatedString {
@@ -362,7 +392,11 @@ class Term():Expr {
                     when (it) {
                         is Token -> append(it.toAnnotatedString())
                         is Number -> append(it.toAnnotatedString())
-                        is Term -> append(it.toAnnotatedString())
+                        is Term -> {
+                            append("(")
+                            append(it.toAnnotatedString())
+                            append(")")
+                        }
                         is Sum -> {
                             append("(")
                             append(it.toAnnotatedString())
@@ -534,6 +568,7 @@ class Term():Expr {
     }*/
 
     override fun multiply(expr: Expr): Expr {
+        println("Term.multiply this = ${this.toAnnotatedString()}, expr = ${expr.toAnnotatedString()}")
         return multiply(this, expr)
     }
 
@@ -602,24 +637,26 @@ class Term():Expr {
      However, we don't expand any expressions.  If one term contains the two tokens 'ax' and the other term contains
      a term 'term(ax)' this function won't find it.
      */
-    override fun equals(expr: Expr): Boolean {
+    override fun equals(o: Any?): Boolean {
 
         val exprNumerators = arrayListOf<Expr>()
         val exprDenominators = arrayListOf<Expr>()
 
 
-        if (this === expr){
+        if (this === o){
             // Try this first since it is quick
             return true
         }
 
-        if (expr !is Term) {
+        if (o !is Term) {
             // can't be = to this if it isn't the same type of object.
             return false
         }
 
-        exprNumerators.addAll(expr.numerators)
-        exprDenominators.addAll(expr.denominators)
+        //val expr = o as Term
+
+        exprNumerators.addAll(o.numerators)
+        exprDenominators.addAll(o.denominators)
 
         // If both expressions don't contain the same number of elements they can't be equal.
         if (exprNumerators.size != numerators.size || exprDenominators.size != denominators.size) {
@@ -805,8 +842,17 @@ class Sum(): Expr {
     However, we don't expand any expressions.  If one sum contains the two  ( a = b + c) and the other term contains
     a term (a + sum(b + c) this function won't find it.
     */
-    override fun equals(expr: Expr): Boolean {
+    override fun equals(o: Any?): Boolean {
 
+        //println("Sum.equals called")
+
+        if (this === o) return true
+
+        if (o !is Sum) return false
+
+        //val expr = o as Sum
+        //printExpr(this)
+        //printExpr(o)
         val exprPlusTerms = arrayListOf<Expr>()
         val exprMinusTerms = arrayListOf<Expr>()
         val copy = arrayListOf<Expr>()
@@ -814,17 +860,17 @@ class Sum(): Expr {
 
 
         // Quickest easiest test first
-        if (this === expr ) {
+      /*  if (this === expr ) {
             return true
-        }
+        }*/
 
-        // If expr is not the same type of object it can't be equal
+       /* // If expr is not the same type of object it can't be equal
         if ( ! (expr is Sum)) {
             return false
-            }
+            }*/
 
-        exprPlusTerms.addAll(expr.plusTerms)
-        exprMinusTerms.addAll(expr.minusTerms)
+        exprPlusTerms.addAll(o.plusTerms)
+        exprMinusTerms.addAll(o.minusTerms)
 
         // If this and expression don't have the same number of terms, they can't be equal.
         if (plusTerms.size != exprPlusTerms.size || minusTerms.size != exprMinusTerms.size) {
@@ -890,7 +936,10 @@ class Matrix private constructor(val data: ArrayList<ArrayList<Expr>>) {
 
             val equations = arrayListOf<Equation>()
 
-            val coeffDet = coeff.det()
+            val coeffDet = coeff.det(true)
+            println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            coeff.printOut()
+            println("coeffDet = ${coeffDet.toAnnotatedString()}")
             val size = coeff.data.size
             for (matrixIndex in 0 until size){
                 val builder = Matrix.Builder(size)
@@ -903,10 +952,30 @@ class Matrix private constructor(val data: ArrayList<ArrayList<Expr>>) {
                         }
                     }
                 }
-                val matrix = builder.build()
-                equations.add(Equation(variables[matrixIndex], matrix.det().divide(coeffDet)))
+                val constMatrix = builder.build()
+
+                val constMatrixDet = constMatrix.det(false)
+                println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5")
+                coeff.printOut()
+                constMatrix.printOut()
+                println("constMatrix.det = ${constMatrixDet.toAnnotatedString()} ${constMatrix::class.simpleName}")
+                println("coeffDet = ${coeffDet.toAnnotatedString()}: ${coeffDet::class.simpleName}")
+
+                if (coeffDet is Sum) {
+                    println("common denominator = ${convertSumToCommonDenominator((coeffDet as Sum)).toAnnotatedString()}")
+                }
+
+                equations.add(Equation(variables[matrixIndex], constMatrixDet.divide(coeffDet)))
             }
             return equations
+        }
+
+        fun zeroMatrix(order: Int): Matrix {
+            val builder = Matrix.Builder(order)
+            repeat (order * order) {
+                builder.add(Number(0.0))
+            }
+            return builder.build()
         }
 
     }
@@ -944,33 +1013,106 @@ class Matrix private constructor(val data: ArrayList<ArrayList<Expr>>) {
         return builder.build()
     }
 
-    fun det(): Expr {
-        if (data.size == 2) {
-            val product1 = Term().multiply(data[0][0]).multiply(data[1][1])
-            val product2 = Term().multiply(data[1][0]).multiply(data[0][1])
-            val difference = product1.subtract(product2)
-            //return(Term().multiply(data[0][0]).multiply(data[1][1]).subtract((Term().multiply(data[1][0]).multiply(data[0][1]))))
-            return difference
+    fun det(factored: Boolean): Expr {
+        if (data.size == 1) {
+            return data[0][0]
         } else {
-            var det:Expr = Sum()
-            var addIt = true
-            for (column in 0 until data.size){
-                if (addIt){
-                    val cofactorDet = cofactor(0,column).det()
-                    //val product = Term().multiply(data[0][column]).multiply(cofactorDet)
-                    val product = data[0][column].multiply(cofactorDet)
-                    det = det.add(product)
-                } else {
-                    val cofactorDet = cofactor(0,column).det()
-                    //val product = Term().multiply(data[0][column]).multiply(cofactorDet)
-                    val product = data[0][column].multiply(cofactorDet)
-                    det = det.subtract(product)
+            if (data.size == 2) {
+               /* val product1 = Term().multiply(data[0][0]).multiply(data[1][1])
+                val product2 = Term().multiply(data[1][0]).multiply(data[0][1])*/
+                val product1 = if (factored) multiply_f(data[0][0],data[1][1]) else multiply(data[0][0],data[1][1])
+                println("det() data1 = ${data[0][0].toAnnotatedString()}: ${data[0][0]::class.simpleName} data2 = ${data[1][1].toAnnotatedString()}: ${data[1][1]::class.simpleName}, product1 = ${product1.toAnnotatedString()}, factored = $factored")
+                val product2 = if (factored) multiply_f(data[1][0],data[0][1]) else multiply (data[1][0],data[0][1])
+                val difference = product1.subtract(product2)
+                //return(Term().multiply(data[0][0]).multiply(data[1][1]).subtract((Term().multiply(data[1][0]).multiply(data[0][1]))))
+                return difference
+            } else {
+                var det: Expr = Sum()
+                var addIt = true
+                for (column in 0 until data.size) {
+                    println("det column = $column")
+                    if (addIt) {
+                        val cofactorDet = cofactor(0, column).det(factored)
+                        cofactor(0,column).printOut()
+                        //val product = Term().multiply(data[0][column]).multiply(cofactorDet)
+                        val product = if (factored) multiply_f (data[0][column],(cofactorDet)) else multiply (data[0][column],(cofactorDet))
+                        println("det = ${det.toAnnotatedString()}  element = ${data[0][column].toAnnotatedString()},  cofactorDet = ${cofactorDet.toAnnotatedString()}  add product = ${product.toAnnotatedString()}")
+                        det = det.add(product)
+                        println("new det = ${det.toAnnotatedString()}")
+                    } else {
+                        val cofactorDet = cofactor(0, column).det(factored)
+                        cofactor(0,column).printOut()
+
+                        //val product = Term().multiply(data[0][column]).multiply(cofactorDet)
+                        val product = if (factored) multiply_f (data[0][column], cofactorDet) else multiply (data[0][column], cofactorDet)
+                        println("det = ${det.toAnnotatedString()}  element = ${data[0][column].toAnnotatedString()},  cofactorDet = ${cofactorDet.toAnnotatedString()}  subtract product = ${product.toAnnotatedString()}")
+
+                        det = det.subtract(product)
+                        println("new det = ${det.toAnnotatedString()}")
+                    }
+                    addIt = !addIt
                 }
-                addIt = ! addIt
+
+                println("det() returning ${det.toAnnotatedString()}: ${det::class.simpleName}")
+                return det
             }
-            return det
         }
     }
+
+    /*fun detOld(): Expr {
+        if (data.size == 1) {
+            return data[0][0]
+        } else {
+            if (data.size == 2) {
+                *//* val product1 = Term().multiply(data[0][0]).multiply(data[1][1])
+                 val product2 = Term().multiply(data[1][0]).multiply(data[0][1])*//*
+                val product1 = multiply_f(data[0][0],data[1][1])
+                println("det() data1 = ${data[0][0].toAnnotatedString()}: ${data[0][0]::class.simpleName} data2 = ${data[1][1].toAnnotatedString()}: ${data[1][1]::class.simpleName}, product1 = ${product1.toAnnotatedString()}")
+                val product2 = multiply_f(data[1][0],data[0][1])
+                val difference = product1.subtract(product2)
+                //return(Term().multiply(data[0][0]).multiply(data[1][1]).subtract((Term().multiply(data[1][0]).multiply(data[0][1]))))
+                return difference
+            } else {
+                var det: Expr = Sum()
+                var addIt = true
+                for (column in 0 until data.size) {
+                    println("det column = $column")
+                    if (addIt) {
+                        val cofactorDet = cofactor(0, column).det()
+                        cofactor(0,column).printOut()
+                        //val product = Term().multiply(data[0][column]).multiply(cofactorDet)
+                        val product = multiply_f (data[0][column],(cofactorDet))
+                        println("det = ${det.toAnnotatedString()}  element = ${data[0][column].toAnnotatedString()},  cofactorDet = ${cofactorDet.toAnnotatedString()}  add product = ${product.toAnnotatedString()}")
+                        det = det.add(product)
+                        println("new det = ${det.toAnnotatedString()}")
+                    } else {
+                        val cofactorDet = cofactor(0, column).det()
+                        cofactor(0,column).printOut()
+
+                        //val product = Term().multiply(data[0][column]).multiply(cofactorDet)
+                        val product = multiply_f (data[0][column], cofactorDet)
+                        println("det = ${det.toAnnotatedString()}  element = ${data[0][column].toAnnotatedString()},  cofactorDet = ${cofactorDet.toAnnotatedString()}  subtract product = ${product.toAnnotatedString()}")
+
+                        det = det.subtract(product)
+                        println("new det = ${det.toAnnotatedString()}")
+                    }
+                    addIt = !addIt
+                }
+
+                println("det() returning ${det.toAnnotatedString()}: ${det::class.simpleName}")
+                return det
+            }
+        }
+    }*/
+
+    fun incrementElementByExpr(expr: Expr, row: Int, col: Int) {
+        data[row][col] = addSubtract_cd(data[row][col], expr, ADD)
+    }
+
+    fun decrementElementByExpr(expr: Expr, row: Int, col: Int) {
+        data[row][col] = addSubtract_cd(data[row][col], expr, SUBTRACT)
+    }
+
 
     fun printOut(){
         for (i in 0 until data.size){
