@@ -47,7 +47,7 @@ import algebra.printExpr
     Expr's must also implement equals(Expr).  This is because we want different objects to possibly be equal.
     Example  (a + b) = (b + a)  or ab = ba.
  */
- 
+
 enum class Sign {
     POSITIVE {
         override fun toString() = "positive"

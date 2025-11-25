@@ -2,6 +2,9 @@ package userInterface
 
 import algebra.testCases
 import algebra.testCases2
+import algebra.testCases3
+import algebra.testCases4
+import algebra.testCases5
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -200,6 +203,7 @@ fun sideBar() {
 
                 Button (colors = ButtonDefaults.buttonColors(backgroundColor = MyConstants.myGreen, contentColor = Color.White)
                     ,onClick = {
+                        println("DERIVE button pressed")
                         currentState.derive = true
                     }){
                     Text("Derive")
@@ -336,6 +340,10 @@ fun mainWindow() {
     //var xx by remember{ mutableStateOf(() -> unit = {})}
     if (runTestCases) testCases()
     if (runTestCases_2) testCases2()
+    if (runTestCases_3)testCases3()
+    if (runTestCases_4)testCases4()
+    if (runTestCases_5)testCases5()
+
 
 
     @Composable
@@ -472,7 +480,7 @@ fun mainWindow() {
                     open = false
                 } else {
                     fileDialog("Test String", true) {
-                        @Composable
+                        //@Composable
                         open = false
                         if (it != null) {
                             if (!pathToDataFile.exists()) {
