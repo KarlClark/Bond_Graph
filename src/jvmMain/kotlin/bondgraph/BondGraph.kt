@@ -881,14 +881,49 @@ class BondGraph(var name: String) {
     @Composable
     fun derive(){
 
+        println("derive called)")
+
         val state = LocalStateInfo.current
         val simultaneousEquationsMap = linkedMapOf<Element, Equation>()
+        val tokenToElementMap = hashMapOf<Token, Element>()
         var solvedEquationsMap = linkedMapOf<Element, Equation>()
         val eTokenToEDotTokenMap = linkedMapOf<Token, Token>()
+        val equations = arrayListOf<Equation>()
+        //val resistorEquations = arrayListOf<Equation>()
+        //var solvedResistorEquations = arrayListOf<Equation>()
         //var triggerResults by remember { mutableStateOf(false) }
         val derivativeCausalityElements = elementsMap.values.filter{
             (it is Capacitor && it.getBondList()[0].effortElement === it) ||
             (it is Inertia && it.getBondList()[0].effortElement !== it)}
+
+        fun processArbitrarilyAssignedResistors () {
+
+            val equations = arrayListOf<Equation>()
+
+            if (arbitrarilyAssignedResistors.size > 0){
+
+                // Must reset the expressions on all the resistors first before calculating
+                // any new ones or they might get used in the new derivations.
+                arbitrarilyAssignedResistors.forEach {
+                    (it as Resistor).substituteExpression = null
+                }
+
+                arbitrarilyAssignedResistors.forEach {
+                    println("calling deriveEquation on ${it.displayId}")
+                    val equation = (it as Resistor).deriveEquation()
+                    equations.add(equation)
+                    tokenToElementMap.put(equation.leftSide as Token, it)
+                    println("derived equation = ${equation.toAnnotatedString()}")
+                    if (displayIntermediateResults) results.add(AnnotatedString("1- ") + equation.toAnnotatedString())
+                }
+
+                val solvedEquations = solve(equations)
+                solvedEquations.forEach { equation ->
+                    (tokenToElementMap[equation.leftSide as Token] as OnePort).substituteExpression = equation.rightSide
+                }
+            }
+
+        }
 
 
 
@@ -896,13 +931,13 @@ class BondGraph(var name: String) {
 
             results.clear()
 
-            /*
+/*
           Create a name for each element based on its type
           and the numbers of the bonds it's attached to.
           Each element type has a function for creating
           its name from the numbers of the bonds it's
           attached to.
-          */
+ */
 
             elementsMap.forEach { it.value.createDisplayId() }
             elementsMap.values.forEach{
@@ -912,6 +947,7 @@ class BondGraph(var name: String) {
                 }
                 if (it is OnePort) {
                     it.setValue(valuesSetWorkingCopy!!.onePortValues[it])
+                    it.substituteExpression = null
                 }
                 if (it is TwoPort) {
                     it.setValue(valuesSetWorkingCopy!!.twoPortValues[it])
@@ -921,67 +957,74 @@ class BondGraph(var name: String) {
             if (! causalityComplete()) throw BadGraphException("Error: Graph is not completely augmented")
 
             println("number of arbitrarily assigned resistors is ${arbitrarilyAssignedResistors.size}")
-            if (arbitrarilyAssignedResistors.size > 0){
-                arbitrarilyAssignedResistors.forEach {
-                    (it as Resistor).substituteExpression = null
-                    println("calling deriveEquation on ${it.displayId}")
-                    simultaneousEquationsMap[it] = ((it).deriveEquation())
-                    println("derived equation = ${simultaneousEquationsMap[it]?.toAnnotatedString()}")
-                    if (displayIntermediateResults) results.add(AnnotatedString("1- ") + simultaneousEquationsMap[it]?.toAnnotatedString()!!)
-                }
-            }
+            processArbitrarilyAssignedResistors()
 
             println ("derivativeCausalityElements.size = ${derivativeCausalityElements.size}")
             if (derivativeCausalityElements.isNotEmpty()){
+                val equations = arrayListOf<Equation>()
                 derivativeCausalityElements.forEach {
                     println("derivative causality calling derive equation on ${it.displayId}")
                     val equation = (it as OnePort).deriveEquation()
+                    equations.add(equation)
                     if (displayIntermediateResults) results.add(buildAnnotatedString { append("Equation -> ") ; append(equation.toAnnotatedString())})
                     println("Equation -> " + equation.toAnnotatedString())
-                    simultaneousEquationsMap[it] = replaceTokens(equation, eTokenToEDotTokenMap)
-                    println(" dot equation -> " + simultaneousEquationsMap[it]?.toAnnotatedString())
-                    if (displayIntermediateResults) results.add(buildAnnotatedString { append("dot equation -> ") ; append(simultaneousEquationsMap[it]!!.toAnnotatedString())})
+                    //simultaneousEquationsMap[it] = replaceTokens(equation, eTokenToEDotTokenMap)
+                    tokenToElementMap.put((equation.leftSide as Token), it)
+                    //if (displayIntermediateResults) results.add(buildAnnotatedString { append("dot equation -> ") ; equation.toAnnotatedString()})
                 }
+                val solvedEquations = solve(equations)
+                solvedEquations.forEach {equation ->
+                    val dotRightSide = replaceTokensInExpressionWithDotTokens(equation.rightSide, eTokenToEDotTokenMap)
+                    println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+                    println("eTokenToEDotToken map")
+                    eTokenToEDotTokenMap.forEach{key, value -> println("${key.toAnnotatedString()} --> ${value.toAnnotatedString()}")}
+                    println("equation = ${equation.toAnnotatedString()}")
+                    println("dot right side = ${dotRightSide.toAnnotatedString()}")
+                    (tokenToElementMap[equation.leftSide as Token] as OnePort).substituteExpression = dotRightSide
+
+                }
+                //If there are arbitrarily assigned resistors, their expressions must be re-evaluated now that there
+                //are expressions for derivative causality elements.
+                processArbitrarilyAssignedResistors()
             }
 
-            solvedEquationsMap = solveSimultaneousEquations(simultaneousEquationsMap)
-            if (displayIntermediateResults) solvedEquationsMap.values.forEach { results.add(AnnotatedString("2- ") + it.toAnnotatedString())  }
+            //solvedEquationsMap = solveSimultaneousEquations(simultaneousEquationsMap)
+           /* if (displayIntermediateResults) solvedEquationsMap.values.forEach { results.add(AnnotatedString("2- ") + it.toAnnotatedString())  }
 
             solvedEquationsMap.forEach { (key, value) ->
                 println("assigning ${(key.displayId)} the substitute expression ${value.rightSide.toAnnotatedString()}")
-                (key as OnePort).substituteExpression = value.rightSide}
+                (key as OnePort).substituteExpression = value.rightSide}*/
 
             val elementsList = getIndependentStorageElements()
-            if (elementsList.isEmpty()) throw BadGraphException("Error: There are no independent capacitors or resistors.")
+            if (elementsList.isEmpty()) throw BadGraphException("Error: There are no independent capacitors or inductors.")
 
             for (element in elementsList ) {
                 var equation = (element as OnePort).deriveEquation()
                 println("derived equation for element ${element.displayId}  -> ${equation.toAnnotatedString()}")
                 if (displayIntermediateResults) results.add(AnnotatedString("3- ") + equation.toAnnotatedString())
+                equations.add(equation)
+            }
 
 
 
                 if (derivativeCausalityElements.size > 0) {
-                    equation = solve(equation.leftSide as Token, equation)
-                    if (displayIntermediateResults) results.add(AnnotatedString("4- ") + equation.toAnnotatedString())
-                    equation = simplifySums(equation)
-                    if (displayIntermediateResults) results.add(AnnotatedString("5- ") + equation.toAnnotatedString())
+                    println("??????????????????????????????????????????????????????????????????????????")
+                    equations.forEach { println("${it.toAnnotatedString()}") }
+                    val solvedEquations = solve(equations)
+                    solvedEquations.forEach {
+                        results.add(it.toAnnotatedString())
+                    }
+                   /* equations.forEach {
+                        val solved = solve(arrayListOf(it))
+                        results.add(solved[0].toAnnotatedString())
+                    }*/
+                } else {
+                    equations.forEach {
+                        results.add(it.toAnnotatedString())
+                    }
                 }
 
 
-                if (arbitrarilyAssignedResistors.size > 0) {
-                    val newRightSide = (gatherLikeTerms(equation.rightSide as Sum))
-                    equation = Equation(equation.leftSide, newRightSide)
-                    if (displayIntermediateResults) results.add(AnnotatedString("6- ") + equation.toAnnotatedString())
-                    println("${newRightSide.toAnnotatedString()}")
-                    equation = simplifySums(equation)
-                    if (displayIntermediateResults) results.add(AnnotatedString("7- ") + equation.toAnnotatedString())
-                    equation = cancel(equation)
-                    if (displayIntermediateResults) results.add(AnnotatedString("8- ") + equation.toAnnotatedString())
-                }
-
-                results.add(equation.toAnnotatedString())
-            }
             println("derive showResultsWindow = ${state.showResultsWindow}")
 
         }catch(e: BadGraphException ) {
