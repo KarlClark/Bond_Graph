@@ -14,6 +14,11 @@ import algebra.*
 }*/
 
 fun reduce (term: Term): Expr{
+    /*
+    If there are no values in the numerator or denominator (maybe everything canceled) then return Number(1.0)
+    If there is one expression  in the numerator and no denominators, then return the expression.  So for example
+    a Term with just a Sum in the numerator would become just the Sum.
+     */
 
     if (term.numerators.size + term.denominators.size == 0){
         return Number(1.0)
