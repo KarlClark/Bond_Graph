@@ -42,7 +42,8 @@ kotlin {
         val commonMain by getting{
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.6.1")
-                implementation("androidx.compose.material3:material3:1.4.0")            }
+                //implementation("androidx.compose.material3:material3:1.4.0")
+            }
         }
         val jvmTest by getting
     }
