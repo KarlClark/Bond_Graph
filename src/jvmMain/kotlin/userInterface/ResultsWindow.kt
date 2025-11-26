@@ -73,3 +73,16 @@ fun resultsWindow() {
         currentState.showResultsWindow = false
     }
 }
+
+/*
+@Composable
+fun testWindow(theList: ArrayList<Any>, cFunction: @Composable (ArrayList<Any>) -> Unit) {
+    var closeRequest by remember { mutableStateOf(false) }
+
+    Window (
+        onCloseRequest = {closeRequest = true}
+        ,state = WindowState(width = 1200.dp, height = 800.dp)
+    ) {
+        cFunction(theList)
+    }
+}*/
