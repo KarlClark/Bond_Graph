@@ -13,12 +13,12 @@ build/
 #.idea/libraries/
 .gradle
 settings.gradle/
-gradlew
-gradlew.bat
-build.gradle.kts
-gradle.properties
+#gradlew
+#gradlew.bat
+#build.gradle.kts
+#gradle.properties
 settings.gradle.kts
-gradle/
+#gradle/
 build/
 *.log
 *.iws
