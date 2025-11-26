@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowState
 
 
 @Composable
@@ -21,6 +22,14 @@ fun showResults() {
     currentState.resultsWindowState.isMinimized = false
     currentState.resultsWindowOnTop = true
     currentState.resultsWindowOnTop = false
+}
+
+@Composable
+fun showTestWindow() {
+    val currentState = LocalStateInfo.current
+    currentState.showTestWindow = true
+    currentState.testWindowOnTop = true
+    currentState.testWindowOnTop = false
 }
 
 @Composable
@@ -74,15 +83,23 @@ fun resultsWindow() {
     }
 }
 
-/*
 @Composable
-fun testWindow(theList: ArrayList<Any>, cFunction: @Composable (ArrayList<Any>) -> Unit) {
+fun testWindow() {
     var closeRequest by remember { mutableStateOf(false) }
+    val currentState = LocalStateInfo.current
 
     Window (
         onCloseRequest = {closeRequest = true}
-        ,state = WindowState(width = 1200.dp, height = 800.dp)
+        ,state = currentState.testWindowState
+        ,alwaysOnTop = currentState.testWindowOnTop
     ) {
-        cFunction(theList)
+       Box (){
+           Text("test box")
+       }
     }
-}*/
+
+    if (closeRequest){
+        println("close test window")
+        currentState.showTestWindow = false
+    }
+}

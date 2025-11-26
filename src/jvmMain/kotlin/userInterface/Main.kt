@@ -100,11 +100,18 @@ fun main() = application {
         if(state.showResultsWindow){
             println("show results window")
             currentState.resultsWindowState.isMinimized = false
-
-
             resultsWindow()
             currentState.resultsWindowOnTop = true
             currentState.resultsWindowOnTop = false
+        }
+
+        showTestWindow()
+        if (state.showTestWindow){
+            println("show test window")
+            currentState.testWindowState.isMinimized = false
+            testWindow()
+            currentState.testWindowOnTop = true
+            currentState.testWindowOnTop = false
         }
 
         if (showDialog) {
