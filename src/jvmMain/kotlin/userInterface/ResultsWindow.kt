@@ -94,7 +94,7 @@ fun testWindow() {
         ,alwaysOnTop = currentState.testWindowOnTop
     ) {
        Box (){
-           Text("test box")
+           runTest()
        }
     }
 
