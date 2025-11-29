@@ -481,6 +481,28 @@ fun createStateExpression(expr: Expr, token: Token): Expr {
     return Term()
 }
 
+fun expressionContainsFractions(expr: Expr): Boolean {
+    when (expr) {
+        is Token -> return false
+        is Number -> return false
+        is Term -> return expr.denominators.isNotEmpty()
+        is Sum -> {
+            expr.plusTerms.forEach { e ->
+                if (e is Term && e.denominators.isNotEmpty()) {
+                    return true
+                }
+            }
+            expr.minusTerms.forEach { e ->
+                if (e is Term && e.denominators.isNotEmpty()) {
+                    return true
+                }
+            }
+            return false
+        }
+    }
+    return false
+}
+
 fun exprIsNegative(expr: Expr): Boolean {
 
     var workingExpr: Expr
