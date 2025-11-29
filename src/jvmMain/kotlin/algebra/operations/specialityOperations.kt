@@ -631,7 +631,9 @@ fun multiplySumByStateExpression(expr: Expr, sum: Sum): Expr {
             term.numerators.addAll(stateTerm.numerators)
             term.denominators.addAll(stateTerm.denominators)
         } else {
-            term.numerators.add(stateTerm)
+            if ( ! (stateTerm is Number && stateTerm.equals(Number(1.0)))) {
+                term.numerators.add(stateTerm)
+            }
         }
         var newExpr: Expr
         if (cdTerm.plusTerms.isEmpty()){
@@ -645,6 +647,7 @@ fun multiplySumByStateExpression(expr: Expr, sum: Sum): Expr {
             term.numerators.add(cdTerm)
             newExpr = term
         }
+        println("multiplySumByStateExpression newExpr = ${newExpr.toAnnotatedString()} stateToken = ${getTokenFromStateExpression(expr).toAnnotatedString()}")
         val newStateTerm = createStateExpression(newExpr, getTokenFromStateExpression(expr))
         return newStateTerm
     }
