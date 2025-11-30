@@ -588,6 +588,13 @@ fun convertNegativeToPositive(expr: Expr): Expr {
 }
 
 fun createNegativeExpression(expr: Expr): Expr {
+
+    if (isStateVariableExpr(expr)){
+        val sum = Sum()
+        sum.minusTerms.add(getTermFromStateExpression(expr))
+        return createStateExpression(sum, getTokenFromStateExpression(expr))
+    }
+
     val sum = Sum()
     sum.minusTerms.add(expr)
     return sum
