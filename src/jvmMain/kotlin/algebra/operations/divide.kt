@@ -4,6 +4,7 @@ import algebra.*
 import algebra.Number
 import androidx.compose.animation.Animatable
 import bondgraph.AlgebraException
+import userInterface.sum2
 
 fun divide (expr1: Expr, expr2: Expr): Expr {
     //println("divide expr1 = ${expr1.toAnnotatedString()}: ${expr1::class.simpleName}  expr2 = ${expr2.toAnnotatedString()}: ${expr2::class.simpleName}")
@@ -134,6 +135,11 @@ fun divide(token: Token, sum: Sum): Expr {
 
     if (sum.plusTerms.size == 1 && sum.minusTerms.isEmpty()){
         return divide(token, sum.plusTerms[0])
+    }
+
+    if (sum.plusTerms.isEmpty() && sum.minusTerms.size == 1){
+        val expr = token.divide(negate(sum))
+        return createNegativeExpression(expr)
     }
 
     val expr = convertSumToCommonDenominator(sum)
@@ -351,6 +357,11 @@ fun divide (term: Term, sum: Sum): Expr {
         return divide(term, sum.plusTerms[0])
     }
 
+    if (sum.plusTerms.isEmpty() && sum.minusTerms.size ==1){
+        val newExpr = expr.divide(negate(sum))
+        return createNegativeExpression(newExpr)
+    }
+
     if (expr !is Term){
         return divide(expr, sum)
     }
@@ -407,6 +418,11 @@ fun divide (sum: Sum, token: Token): Expr {
         return divide( sum.plusTerms[0], token)
     }
 
+    if (sum.plusTerms.isEmpty() && sum.minusTerms.size ==1){
+        val expr = negate(sum).divide(token)
+        return createNegativeExpression(expr)
+    }
+
     val newSum = Sum()
 
     sum.plusTerms.forEach {
@@ -438,6 +454,11 @@ fun divide (sum: Sum, number: Number): Expr {
         return divide( sum.plusTerms[0], number)
     }
 
+    if (sum.plusTerms.isEmpty() && sum.minusTerms.size == 1){
+        val expr = negate(sum).divide(number)
+        return createNegativeExpression(expr)
+    }
+
     val newSum = Sum()
 
     sum.plusTerms.forEach {
@@ -465,6 +486,12 @@ fun divide(sum: Sum, term: Term): Expr {
     }
 
     val expr = reduce(term)
+
+    if (sum.plusTerms.isEmpty() && sum.minusTerms.size == 1){
+        val newExpr = negate(sum).divide(expr)
+        return createNegativeExpression(newExpr)
+    }
+
     if (expr !is Term) {
         return divide(sum, expr)
     }
