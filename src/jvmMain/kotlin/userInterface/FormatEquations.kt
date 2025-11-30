@@ -83,6 +83,9 @@ val term7 = Number(0.0).subtract( P.multiply(token1).multiply(Number(2.0)).divid
 val term8 = term6.multiply(Q).add(P.multiply(token3)).add(Sf).subtract(Se)
 val term9 = term2.multiply(Q2).add(token1.multiply(token2).divide(token3).multiply(P))
 val map = hashMapOf<Token, Token>(pDot to P, qDot to Q)
+val term10 = Number(0.0).subtract( P.multiply(token1).multiply(Number(2.0)).divide(token2).divide(token3).multiply(token1))
+val term11 = Number(0.0).subtract( token1.multiply(Number(2.0)).divide(token2).divide(token3).multiply(token1))
+val term12 = term11.multiply(P)
 val sum3 = term7.add(term3)
 val eq1 = Equation(pDot, term7)
 val eq2 = Equation(qDot, term3.add(Se))
@@ -93,8 +96,13 @@ val equations = arrayListOf<Equation>(eq1, eq2, eq3)
 @Composable
 fun runTest () {
 
-    equations.forEach {eq ->  println("${eq.toAnnotatedString()}") }
-    composeEquations(equations, map)
+    /*equations.forEach {eq ->  println("${eq.toAnnotatedString()}") }
+    composeEquations(equations, map)*/
+    println("eq1 = ${eq1.toAnnotatedString()}")
+    composeLabeledEquation("3-", eq1)
+    //composeSum(eq1.rightSide as Sum, true)
+    //println("term11 = ${term11.toAnnotatedString()}, term12 = ${term12.toAnnotatedString()}")
+    //composeStateTerm(term12)
 }
 
 class TokenAndExponent(var token: Token, var exponent: Integer)
@@ -214,6 +222,39 @@ fun loadTokenMap(list: ArrayList<Expr>): LinkedHashMap<Token, Int> {
         }
     }
     return map
+}
+
+@Composable
+fun composeEquation(equation: Equation){
+    Row (Modifier
+        .height(IntrinsicSize.Min)
+        .width(IntrinsicSize.Min)
+        , verticalAlignment = Alignment.CenterVertically
+
+    ) {
+        composeExpression(equation.leftSide)
+        composeSign("=")
+        composeExpression(equation.rightSide)
+    }
+}
+
+@Composable
+fun composeLabeledEquation(label: String, equation: Equation){
+    Row (Modifier
+        .height(IntrinsicSize.Min)
+        .width(IntrinsicSize.Max)
+        , verticalAlignment = Alignment.CenterVertically
+
+    ) {
+        BasicTextField(
+            value = label+"   ", onValueChange = {}, modifier = Modifier
+                .height(tokenHeight)
+                .width(IntrinsicSize.Min)
+                .padding(all = 0.dp)
+            , textStyle = TextStyle(fontSize = tokenFontSize)
+            )
+        composeEquation(equation)
+    }
 }
 
 @Composable
@@ -519,6 +560,7 @@ fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
         , verticalAlignment = Alignment.CenterVertically
     )
     {
+        println("composeSum(sum) sum = ${sum.toAnnotatedString()}")
         val  height = if (expressionContainsFractions(sum)) termHeight.times(2) else termHeight
 
         if (encloseInParentheses){
@@ -529,6 +571,7 @@ fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
             if (index > 0) {
                 composeSign("+")
             }
+            println ("composeSum expr = ${expr.toAnnotatedString()}: ${expr::class.simpleName}")
             when (expr) {
                 is Token -> composeToken(expr, "")
                 is Number -> composeNumber(expr)
@@ -539,11 +582,11 @@ fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
 
         sum.minusTerms.forEach { expr ->
             composeSign("-")
-
+            println ("composeSum expr = ${expr.toAnnotatedString()}: ${expr::class.simpleName}")
             when (expr) {
                 is Token -> composeToken(expr, "")
                 is Number -> composeNumber(expr)
-                is Term -> composeTerm(expr)
+                is Term -> composeStateTerm(expr)
                 is Sum -> composeSum(expr, true)
             }
         }
