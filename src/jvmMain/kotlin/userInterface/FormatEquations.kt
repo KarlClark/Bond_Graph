@@ -32,7 +32,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.modules.EmptySerializersModule
 import java.util.LinkedHashMap
 
-val termHeight = 30.dp
+val termHeight = 25.dp
 val tokenHeight = termHeight.times(.8f)
 val tokenFontSize = (tokenHeight.value).sp
 val subscriptFontSize = tokenFontSize.times(.4f)
@@ -44,57 +44,59 @@ val sourceSubscriptFontSize = tokenFontSize.times(.8)
 val subscriptBottomPadding = (tokenFontSize.value * .1).dp
 val signPadding = termHeight.div(5f)
 val minusSignBottomPadding = termHeight.times(.08f)
-
-val token1 = Token("1", "", AnnotatedString("C"))
-val token2 = Token("3", "", AnnotatedString("I"))
-val token3 = Token("12", "", AnnotatedString("R"))
-val token4 = Token("3", "", AnnotatedString("C"))
-val token5 = Token("5", "", AnnotatedString("I"))
-val token6= Token("1", "", AnnotatedString("R"))
-val P = Token("2", "", AnnotatedString("p"), true)
-val pDot = Token("2", "", AnnotatedString("p"), true, differential = true)
-val Q = Token("3", "", AnnotatedString("q"), true)
-val qDot = Token("3", "", AnnotatedString("q"), true, differential = true)
-val Q2 = Token("10", "", AnnotatedString("q"), true)
-val q2Dot = Token("10", "", AnnotatedString("q"), true, differential = true)
+val equationBottomPadding = 8.dp
 
 
-val Se = Token("4", "", AnnotatedString("Se"), true)
-val Sf = Token("4", "", AnnotatedString("Sf"), true)
-
-val term2 = token1.multiply(token2).divide(token3).multiply(token2)
-
-val term1 = token1.multiply(token2).multiply(token3).multiply(token2).divide(token6).divide(token5).divide(token4)
-
-val term3 = token5.multiply(token6).multiply(Q)
-val term5 = token3.multiply(token1)
-
-val tokens = arrayListOf<Any>(token1, token2, token3)
-
-val nTokens = arrayListOf<Token>(token2, token1, token3)
-val dTokens = arrayListOf<Token>(token1, token2, token3)
-
-val tokenMap = linkedMapOf<Token, Int>(token1 to 1, token2 to 2, token3 to 1)
-
-val sum1 = token1.subtract(token2)
-val sum2 = term2.subtract(term5).subtract(token2)
-val term6 = multiply_f(term5, sum1).divide(token6).divide(token5)
-val term7 = Number(0.0).subtract( P.multiply(token1).multiply(Number(2.0)).divide(token2).divide(token3).multiply(token1)).add (Q.multiply(token2)).add(Se)
-val term8 = term6.multiply(Q).add(P.multiply(token3)).add(Sf).subtract(Se)
-val term9 = term2.multiply(Q2).add(token1.multiply(token2).divide(token3).multiply(P))
-val map = hashMapOf<Token, Token>(pDot to P, qDot to Q)
-val term10 = Number(0.0).subtract( P.multiply(token1).multiply(Number(2.0)).divide(token2).divide(token3).multiply(token1))
-val term11 = Number(0.0).subtract( token1.multiply(Number(2.0)).divide(token2).divide(token3).multiply(token1))
-val term12 = term11.multiply(P)
-val sum3 = term7.add(term3)
-val eq1 = Equation(pDot, term7)
-val eq2 = Equation(qDot, term3.add(Se))
-val eq3 = Equation(q2Dot, term9.add(Sf))
-
-val equations = arrayListOf<Equation>(eq1, eq2, eq3)
 
 @Composable
 fun runTest () {
+    val token1 = Token("1", "", AnnotatedString("C"))
+    val token2 = Token("3", "", AnnotatedString("I"))
+    val token3 = Token("12", "", AnnotatedString("R"))
+    val token4 = Token("3", "", AnnotatedString("C"))
+    val token5 = Token("5", "", AnnotatedString("I"))
+    val token6= Token("1", "", AnnotatedString("R"))
+    val P = Token("2", "", AnnotatedString("p"), true)
+    val pDot = Token("2", "", AnnotatedString("p"), true, differential = true)
+    val Q = Token("3", "", AnnotatedString("q"), true)
+    val qDot = Token("3", "", AnnotatedString("q"), true, differential = true)
+    val Q2 = Token("10", "", AnnotatedString("q"), true)
+    val q2Dot = Token("10", "", AnnotatedString("q"), true, differential = true)
+
+
+    val Se = Token("4", "", AnnotatedString("Se"), true)
+    val Sf = Token("4", "", AnnotatedString("Sf"), true)
+
+    val term2 = token1.multiply(token2).divide(token3).multiply(token2)
+
+    val term1 = token1.multiply(token2).multiply(token3).multiply(token2).divide(token6).divide(token5).divide(token4)
+
+    val term3 = token5.multiply(token6).multiply(Q)
+    val term5 = token3.multiply(token1)
+
+    val tokens = arrayListOf<Any>(token1, token2, token3)
+
+    val nTokens = arrayListOf<Token>(token2, token1, token3)
+    val dTokens = arrayListOf<Token>(token1, token2, token3)
+
+    val tokenMap = linkedMapOf<Token, Int>(token1 to 1, token2 to 2, token3 to 1)
+
+    val sum1 = token1.subtract(token2)
+    val sum2 = term2.subtract(term5).subtract(token2)
+    val term6 = multiply_f(term5, sum1).divide(token6).divide(token5)
+    val term7 = Number(0.0).subtract( P.multiply(token1).multiply(Number(2.0)).divide(token2).divide(token3).multiply(token1)).add (Q.multiply(token2)).add(Se)
+    val term8 = term6.multiply(Q).add(P.multiply(token3)).add(Sf).subtract(Se)
+    val term9 = term2.multiply(Q2).add(token1.multiply(token2).divide(token3).multiply(P))
+    val map = hashMapOf<Token, Token>(pDot to P, qDot to Q)
+    val term10 = Number(0.0).subtract( P.multiply(token1).multiply(Number(2.0)).divide(token2).divide(token3).multiply(token1))
+    val term11 = Number(0.0).subtract( token1.multiply(Number(2.0)).divide(token2).divide(token3).multiply(token1))
+    val term12 = term11.multiply(P)
+    val sum3 = term7.add(term3)
+    val eq1 = Equation(pDot, term7)
+    val eq2 = Equation(qDot, term3.add(Se))
+    val eq3 = Equation(q2Dot, term9.add(Sf))
+
+    val equations = arrayListOf<Equation>(eq1, eq2, eq3)
 
     /*equations.forEach {eq ->  println("${eq.toAnnotatedString()}") }
     composeEquations(equations, map)*/
@@ -125,6 +127,7 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
     Column (Modifier
         .height(IntrinsicSize.Min)
         .width(IntrinsicSize.Min)
+        , verticalArrangement = Arrangement.spacedBy(equationBottomPadding)
     ) {
 
 
@@ -136,7 +139,6 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
                 , verticalAlignment = Alignment.CenterVertically
 
             ) {
-
                 val rightSide = eq.rightSide
 
                 composeToken(eq.leftSide as Token, "")
@@ -152,7 +154,7 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
                     }
 
                     val sourceExpressions  = arrayListOf<Pair <Expr, Boolean>>()
-                    println ("equations.size = ${userInterface.equations.size}  expressions.size = ${expressions.size}")
+                    println ("equations.size = ${equations.size}  expressions.size = ${expressions.size}")
 
                     rightSide.plusTerms.forEach{term ->
                         if (isStateVariableExpr(term)){
@@ -229,6 +231,7 @@ fun composeEquation(equation: Equation){
     Row (Modifier
         .height(IntrinsicSize.Min)
         .width(IntrinsicSize.Min)
+        .padding(bottom = equationBottomPadding)
         , verticalAlignment = Alignment.CenterVertically
 
     ) {

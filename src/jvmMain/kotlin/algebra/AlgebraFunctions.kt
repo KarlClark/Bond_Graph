@@ -268,47 +268,21 @@ fun testCases4() {
     val tC = Token("C")
     val tP = Token("P", powerVar = true)
     val tD = Token("D", powerVar = true)
-    val sum1 = Sum()
-    val sum2 = Sum()
+    val sum1  = Number(0.0).subtract(tA.multiply(tB).multiply(tP))
+    val sum2 = Number(0.0).subtract(tX.multiply(tY))
     var expr1: Expr
     var expr2: Expr
 
-    //val term1 = divide(multiply(tX,tY),multiply(tA,tB))
+    val term1 = sum1.multiply(sum2)
     val term2 = Term()
     //val term1 = divide(tX,tZ)
-    val term1 = Term()
     val term3 = Term()
     val term4 = Term()
     val term5 = Term()
     val term6 = Term()
-    term1.numerators.add(tX)
-    term1.numerators.add(tY)
-    term1.denominators.add(tA)
-    term2.numerators.add(tZ)
-    term2.numerators.add(tA)
-    term2.denominators.add(tB)
-    term3.numerators.add(term2)
-    term3.numerators.add(tP)
-    //term4.numerators.add(term1)
-    term4.numerators.add(tC)
-    term4.numerators.add(tP)
+    println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    println("sum1 = ${sum1.toAnnotatedString()}, sum2 = ${sum2.toAnnotatedString()}, term1 = ${term1.toAnnotatedString()}")
 
-    expr1 =  sum1.add(term1)
-    //sum.plusTerms.add(term3)
-    expr1 = expr1.add(Number(5.0))
-    expr1 = expr1.add(term3)
-    expr2 = tZ
-    //expr2 = expr2.subtract(term4)
-    expr2 = expr2.subtract(tP)
-
-    expr2 = expr2.add(term1)
-    expr2 = expr2.subtract(Number(7.0))
-    println("term3 = ${term3.toAnnotatedString()}, term4 = ${term4.toAnnotatedString()}  sum= ${add(term3,term4).toAnnotatedString()}")
-    println("expr1 = ${expr1.toAnnotatedString()}")
-    println("expr2 = ${expr2.toAnnotatedString()}")
-    val expr = subtract(expr1, expr2)
-    println("expr1 = ${expr1.toAnnotatedString()}, expr2 = ${expr2.toAnnotatedString()} expr = ${expr.toAnnotatedString()}")
-    printExpr(expr)
 }
 
 fun testCases5() {
@@ -844,7 +818,7 @@ fun printExpr(expr: Expr, printStars: Boolean = true){
 
 class CoefficientAndExpr(val coefficient: Double, val expr: Expr)
 /*
-A Term may be made up of other Terms.  For example a Term could consist of a Token and a another Term.
+A Term may be made up of other Terms.  For example a Term could consist of a Token and another Term.
 If the Token represents x and the other Term represents yz the whole Term represents xyz.  Most of
 the time this is fine but causes a problem when we want to cancel like factors in the numerator and
 denominator of a fraction (also a Term) If the numerator is made up of the above Term and the denominator
@@ -1049,7 +1023,7 @@ fun getExprFromCoefficientAndExpr(coefficientAndExpr: CoefficientAndExpr): Expr 
                     return createNegativeExpression(Number(num.absoluteValue))
                 }
             }
-            if (num == 1.0) return expr
+            //if (num == 1.0) return expr
             if (expr.numerators.size == 0){
                 expr.numerators.add(Number(num.absoluteValue))
             } else {
@@ -1181,8 +1155,7 @@ fun rationalizeTerm (term: Expr): Expr {
     }
     val coefficientAndExpr = getCoefficientAndExpr(term)
     val expr = getExprFromCoefficientAndExpr(coefficientAndExpr)
-
-    println("rationalizeTerm(term) term = ${term.toAnnotatedString()}, expr = ${expr.toAnnotatedString()}, coeff = ${coefficientAndExpr.coefficient}")
+    println("rationalizeTerm(term) term = ${term.toAnnotatedString()}, expr = ${coefficientAndExpr.expr.toAnnotatedString()}, coeff = ${coefficientAndExpr.coefficient}, new expression = ${expr.toAnnotatedString()}")
     if (expr is Term) {
         return checkForNegativeTerm(expr)
     }
@@ -1399,11 +1372,15 @@ fun eliminateCommonTerms(list1: ArrayList<Expr>, list2: ArrayList<Expr>, startNu
     val copy = arrayListOf<Expr>()
     var num = startNum
 
+
+
     copy.addAll(list1)
 
     copy.forEach { expr ->
         var term = list2.find { t -> expr.equals(t) }
+
         if (term != null) {
+            println("eliminateCommonTerms(list, list) found common term = ${term.toAnnotatedString()}")
             list1.remove(expr)
             list2.remove(term)
         } else {
@@ -1411,6 +1388,7 @@ fun eliminateCommonTerms(list1: ArrayList<Expr>, list2: ArrayList<Expr>, startNu
                 val negExpr = negate(expr)
                 term = list2.find{ t -> negExpr.equals(t)}
                 if (term != null) {
+                    println("eliminateCommonTerms(list, list) found negative common term = ${term.toAnnotatedString()}")
                     list1.remove(expr)
                     list2.remove(term)
                     num *= -1.0
@@ -1860,6 +1838,7 @@ fun isTokenInDenominator(token: Token, expr: Expr): Boolean {
     this new expression is a token, and it matches the input token then return true.
     If it not a token then call ourself recursively.
      */
+
     if (expr is Term) {
         for (ex in expr.denominators){
             if (ex is Token && ex === token) {
