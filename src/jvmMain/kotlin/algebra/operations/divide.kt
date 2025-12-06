@@ -4,7 +4,6 @@ import algebra.*
 import algebra.Number
 import androidx.compose.animation.Animatable
 import bondgraph.AlgebraException
-import userInterface.sum2
 
 fun divide (expr1: Expr, expr2: Expr): Expr {
     //println("divide expr1 = ${expr1.toAnnotatedString()}: ${expr1::class.simpleName}  expr2 = ${expr2.toAnnotatedString()}: ${expr2::class.simpleName}")
@@ -349,6 +348,8 @@ fun divide (term1: Term, term2: Term): Expr {
 fun divide (term: Term, sum: Sum): Expr {
     val expr = reduce(term)
 
+    println("divide(term, sum)  term = ${term.toAnnotatedString()}, sum = ${sum.toAnnotatedString()} reduced term = ${expr.toAnnotatedString()}")
+
     if (sum.plusTerms.size + sum.minusTerms.size == 0){
         throw IllegalArgumentException("Divide by zero, Sum = ${sum.toAnnotatedString()}")
     }
@@ -384,6 +385,7 @@ fun divide (term: Term, sum: Sum): Expr {
     return rationalizeTerm(newTerm)*/
 
     val commonExpr = convertSumToCommonDenominator(sum)
+    println("divide(term, sum) commonExpr = ${commonExpr.toAnnotatedString()}")
 
     if (isStateVariableExpr(commonExpr)) {
         throw AlgebraException("divide (term, sum)  attempt to divide by a sum that contains a state expression.  sum = ${sum.toAnnotatedString()}")
