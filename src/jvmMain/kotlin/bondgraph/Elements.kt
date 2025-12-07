@@ -1072,7 +1072,7 @@ class Resistor (bondGraph: BondGraph, id: Int, elementType: ElementTypes, displa
         val bond = bondsList[0]
 
         vToken = Token(bond.displayId, "", elementType.toAnnotatedString(), false, false, false, false)
-        efToken = Token(bond.displayId, "", AnnotatedString("e"), true, false, false, false)
+        efToken = Token(bond.displayId, "", AnnotatedString("Se"), true, false, false, false)
         fToken = Token(bond.displayId, "", AnnotatedString("f"), true, false, false, false)
     }
 
@@ -1193,7 +1193,7 @@ class SourceOfFlow (bondGraph: BondGraph, id: Int, elementType: ElementTypes, di
         if (bondsList.isEmpty()) throw BadGraphException("Error: Attempt to create tokens on an element with no bonds. Has createTokens been called before augmentation?")
         val bond = bondsList[0]
 
-        vToken = Token(bond.displayId, "", AnnotatedString("f"), true, false, false, false)
+        vToken = Token(bond.displayId, "", AnnotatedString("Sf"), true, false, false, false)
     }
 
 

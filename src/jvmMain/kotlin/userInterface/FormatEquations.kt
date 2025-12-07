@@ -26,6 +26,7 @@ import algebra.operations.multiply_f
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import bondgraph.AlgebraException
 import kotlinx.coroutines.sync.Mutex
@@ -35,8 +36,8 @@ import java.util.LinkedHashMap
 val termHeight = 25.dp
 val tokenHeight = termHeight.times(.8f)
 val tokenFontSize = (tokenHeight.value).sp
-val subscriptFontSize = tokenFontSize.times(.4f)
-val superscriptFontSize = tokenFontSize.times(.5f)
+val subscriptFontSize = tokenFontSize.times(.45f)
+val superscriptFontSize = tokenFontSize.times(.6)
 val signFontSize = tokenFontSize.times(1)
 
 val sourceSubscriptHeight = tokenHeight.times(.5f)
@@ -45,6 +46,8 @@ val subscriptBottomPadding = (tokenFontSize.value * .1).dp
 val signPadding = termHeight.div(5f)
 val minusSignBottomPadding = termHeight.times(.08f)
 val equationBottomPadding = 8.dp
+val fontFamily = FontFamily.Serif
+val minusSign = "\u2013"
 
 
 
@@ -183,7 +186,7 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
 
                         if (pair.first != null) {
                             if (pair.second) {
-                                composeSign("-")
+                                composeSign(minusSign)
                             } else {
                                 if (index > 0) {
                                     composeSign("+")
@@ -196,7 +199,7 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
 
                     sourceExpressions.forEach { pair ->
                         if (pair.second) {
-                            composeSign("-")
+                            composeSign(minusSign)
                         } else {
                             composeSign("+")
                         }
@@ -254,7 +257,7 @@ fun composeLabeledEquation(label: String, equation: Equation){
                 .height(tokenHeight)
                 .width(IntrinsicSize.Min)
                 .padding(all = 0.dp)
-            , textStyle = TextStyle(fontSize = tokenFontSize)
+            , textStyle = TextStyle(fontSize = tokenFontSize, fontFamily = fontFamily)
             )
         composeEquation(equation)
     }
@@ -314,7 +317,9 @@ fun composeStateTerm(expr: Expr) {
 fun composeSubscript(sourceString: String, numberString: String){
     if (sourceString == "") {
         BasicTextField(
-            value = numberString, onValueChange = {}, textStyle = TextStyle(fontSize = subscriptFontSize)
+            value = numberString
+            , onValueChange = {}
+            , textStyle = TextStyle(fontSize = subscriptFontSize,  fontFamily = fontFamily)
         )
     } else {
         Row (Modifier
@@ -326,6 +331,8 @@ fun composeSubscript(sourceString: String, numberString: String){
             BasicTextField(modifier = Modifier
                 .width(IntrinsicSize.Min)
                 .height(IntrinsicSize.Min)
+                //.padding(bottom = subscriptBottomPadding)
+
                 //.background(Color.Yellow)
                 ,value = sourceString, onValueChange = {}, textStyle = TextStyle(fontSize = sourceSubscriptFontSize)
             )
@@ -333,8 +340,10 @@ fun composeSubscript(sourceString: String, numberString: String){
             BasicTextField(modifier = Modifier
                 .width(IntrinsicSize.Min)
                 .height(IntrinsicSize.Min)
-                .padding(bottom = subscriptBottomPadding)
-                ,value = numberString, onValueChange = {}, textStyle = TextStyle(fontSize = subscriptFontSize)
+                //.padding(bottom = subscriptBottomPadding)
+                ,value = numberString
+                , onValueChange = {}
+                , textStyle = TextStyle(fontSize = subscriptFontSize, fontFamily = fontFamily)
             )
         }
     }
@@ -400,7 +409,7 @@ fun composeToken (
                     //.wrapContentHeight(align = Alignment.Top)
                     .height(tokenHeight)
                     .padding(all = 0.dp)
-                , textStyle = TextStyle(fontSize = tokenFontSize)
+                , textStyle = TextStyle(fontSize = tokenFontSize, fontFamily = fontFamily)
                 ,
 
             )
@@ -431,11 +440,11 @@ fun composeToken (
             ) {
 
                 BasicTextField(
-                    value = exponent, onValueChange = {}, textStyle = TextStyle(fontSize = superscriptFontSize)
+                    value = exponent, onValueChange = {}, textStyle = TextStyle(fontSize = superscriptFontSize, fontFamily = fontFamily)
                 )
 
                 BasicTextField(
-                value = subscript, onValueChange = {}, textStyle = TextStyle(fontSize = subscriptFontSize)
+                value = subscript, onValueChange = {}, textStyle = TextStyle(fontSize = subscriptFontSize, fontFamily = fontFamily)
             )
                 //composeSubscript(sourceString, subscript)
             }
@@ -486,7 +495,7 @@ fun composeNumber(number: Number){
                 .width(IntrinsicSize.Min)
                 //.background((Color.Red))
             //.padding(all = 0.dp)
-            , textStyle = TextStyle(fontSize = tokenFontSize)
+            , textStyle = TextStyle(fontSize = tokenFontSize, fontFamily = fontFamily)
         )
     }
 }
@@ -505,9 +514,10 @@ fun composeTermRow(list: ArrayList<Expr>) {
         }
         val map = loadTokenMap(list)
         composeTokenProduct(map)
+        val needsParens = list.size > 1
         list.forEach { expr ->
             if (expr is Sum) {
-                composeSum(expr, true)
+                composeSum(expr, needsParens)
             }
         }
     }
@@ -527,7 +537,7 @@ fun composeTokenProduct(map: Map<Token, Int>) {
 fun composeChar(char: String, height: Dp){
     BasicTextField(char
         , onValueChange = {}
-        , textStyle = TextStyle(fontSize = (height.value).sp)
+        , textStyle = TextStyle(fontSize = (height.value).sp, fontFamily = fontFamily)
         , modifier = Modifier
             //.background(Color.Magenta)
             .width(IntrinsicSize.Min)
@@ -536,7 +546,7 @@ fun composeChar(char: String, height: Dp){
 }
 @Composable
 fun composeSign(sign: String) {
-    val bottomPadding = if (sign == "-") minusSignBottomPadding else 0.dp
+    val bottomPadding = if (sign == minusSign) minusSignBottomPadding else 0.dp
     Column(
         Modifier
             //.background(Color.Red)
@@ -544,7 +554,9 @@ fun composeSign(sign: String) {
             .width(IntrinsicSize.Min), verticalArrangement = Arrangement.Bottom
 
     ) {
-        BasicTextField(sign, onValueChange = {}, textStyle = TextStyle(fontSize = signFontSize), modifier = Modifier
+        BasicTextField(sign, onValueChange = {}
+            , textStyle = TextStyle(fontSize = signFontSize, fontFamily = fontFamily)
+            , modifier = Modifier
             //.background(Color.Magenta)
             .width(IntrinsicSize.Min)
             .height(tokenHeight)
@@ -584,7 +596,7 @@ fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
         }
 
         sum.minusTerms.forEach { expr ->
-            composeSign("-")
+            composeSign(minusSign)
             println ("composeSum expr = ${expr.toAnnotatedString()}: ${expr::class.simpleName}")
             when (expr) {
                 is Token -> composeToken(expr, "")
@@ -616,7 +628,7 @@ fun Fraction(nominaator: ArrayList<Token>, denominaor: ArrayList<Token>) {
         {
             BasicTextField("("
                 , onValueChange = {}
-                , textStyle = TextStyle(fontSize = (termHeight.value).sp)
+                , textStyle = TextStyle(fontSize = (termHeight.value).sp, fontFamily = fontFamily)
                 , modifier = Modifier
                     //.background(Color.Magenta)
                     .width(IntrinsicSize.Min)
@@ -625,7 +637,7 @@ fun Fraction(nominaator: ArrayList<Token>, denominaor: ArrayList<Token>) {
             nominaator.forEach {composeToken(it, "2") }
             BasicTextField(")"
                 ,onValueChange = {}
-                , textStyle = TextStyle(fontSize = (termHeight.value).sp)
+                , textStyle = TextStyle(fontSize = (termHeight.value).sp, fontFamily = fontFamily)
                 , modifier = Modifier
                     //.background(Color.Magenta)
                     .width(IntrinsicSize.Min)

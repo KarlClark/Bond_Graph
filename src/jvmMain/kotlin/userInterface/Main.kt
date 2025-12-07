@@ -69,8 +69,6 @@ fun main() = application {
         @Composable
         fun runWindows() {
 
-
-
             if (currentState.exit) {
                 println("exit function valuesSetHasChanged = ${bondGraph.valuesSetHasChanged}")
                 if (bondGraph.valuesSetHasChanged){

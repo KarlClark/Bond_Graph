@@ -668,7 +668,8 @@ fun addStateExpressionToSum(expr: Expr, sum: Sum): Expr {
     }
 
     if (expressionPair.first == null) {
-        newTerm = expr
+        finalExpr.plusTerms.add(expr)
+        return finalExpr
     } else {
         newTerm = addSubtractStateExpressions(expressionPair.first as Expr, expr, ADD)
     }

@@ -1,7 +1,9 @@
 package userInterface
 
 import algebra.Equation
+import androidx.compose.foundation.HorizontalScrollbar
 import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
@@ -10,10 +12,8 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowState
 
 
 @Composable
@@ -120,23 +120,24 @@ fun composedResultsWindow() {
     var closeRequest by remember {mutableStateOf(false)}
     val intermediateResults = remember{ bondGraph.intermediateResults}
     val finalResults = remember{ bondGraph.finalResults}
-    val scrollState = rememberScrollState()
+    val verticalScrollState = rememberScrollState()
+    val horizontalScrollState = rememberScrollState()
     val currentState = LocalStateInfo.current
 
     Window (
         onCloseRequest = {closeRequest = true}
-        ,state = currentState.testWindowState
+        ,state = currentState.composedResultsWindowState
         ,alwaysOnTop = currentState.composedResultsWindowOnTop
     ){
         Box(modifier = Modifier
-            .padding(end = 12.dp)
+            .padding(all = 12.dp)
 
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(scrollState)
-
+                    .verticalScroll(verticalScrollState)
+                    .horizontalScroll(horizontalScrollState)
 
             ) {
                 intermediateResults.forEach { pair ->
@@ -159,9 +160,21 @@ fun composedResultsWindow() {
                     .fillMaxHeight()
 
                 , adapter = rememberScrollbarAdapter(
-                    scrollState = scrollState
+                    scrollState = verticalScrollState
                 )
             )
+
+            HorizontalScrollbar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .height(14.dp)
+                    .fillMaxWidth()
+
+                , adapter = rememberScrollbarAdapter(
+                    scrollState = horizontalScrollState
+                )
+            )
+
         }
     }
 
