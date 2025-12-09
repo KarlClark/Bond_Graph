@@ -273,16 +273,18 @@ fun testCases4() {
     var expr1: Expr
     var expr2: Expr
 
-    val term1 = sum1.multiply(sum2)
-    val term2 = Term()
+    val term1 = tX.divide(tY).divide(tZ).multiply(tP)
+    val term2 = Number(0.0).subtract(tD.multiply(tC).multiply(tB).divide(tA))
+    val sum3 = sum1.add(term2)
     //val term1 = divide(tX,tZ)
     val term3 = Term()
     val term4 = Term()
     val term5 = Term()
     val term6 = Term()
+    expr1 = subtractStateExpressionFromSum(term1, sum3 as Sum)
     println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    println("sum1 = ${sum1.toAnnotatedString()}, sum2 = ${sum2.toAnnotatedString()}, term1 = ${term1.toAnnotatedString()}")
-
+    println("term1 = ${term1.toAnnotatedString()}, sum3 = ${sum3.toAnnotatedString()}, expr1 = ${expr1.toAnnotatedString()}")
+    printExpr(expr1)
 }
 
 fun testCases5() {
