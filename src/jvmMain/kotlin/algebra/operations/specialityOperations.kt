@@ -59,7 +59,7 @@ fun multiply_f(expr1: Expr, expr2: Expr): Expr {
             }
         }
 
-        return cancel(term)
+        return rationalizeTerm(term)
     }
 
     var workingExpr1: Expr
@@ -718,8 +718,10 @@ fun divideStateExpressionByExpression(stateExpression: Expr, expr: Expr): Expr {
         throw AlgebraException("divideStateExpressionByExpression(expr, expr) called with two state variable expressions. stateExpression = ${stateExpression.toAnnotatedString()}, expr = ${expr.toAnnotatedString()}")
     }
 
+    val stateTerm = getTermFromStateExpression(stateExpression)
+    println("divideStateExpressionByExpression(stateExpr, expr) state expression term = ${stateTerm.toAnnotatedString()}: ${stateTerm::class.simpleName},  expr = ${expr.toAnnotatedString()}: ${expr::class.simpleName}")
 
-    val newExpr = divide(getTermFromStateExpression(stateExpression), expr)
+    val newExpr = divide(stateTerm, expr)
 
     val term = createStateExpression(newExpr, getTokenFromStateExpression(stateExpression))
     println("divideStateExpressionByExpression(stateExpr, expr) stateExpr = ${stateExpression.toAnnotatedString()}, expr = ${expr.toAnnotatedString()}, newExpr = ${newExpr.toAnnotatedString()}, new state expr = ${term.toAnnotatedString()}")
