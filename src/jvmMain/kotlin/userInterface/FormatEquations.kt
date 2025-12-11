@@ -33,6 +33,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.modules.EmptySerializersModule
 import java.util.LinkedHashMap
 
+/*
+the following constants are all based on the value of termHeight.  So to change the size of the text on the
+output screen, hopefully all you have to do is changed the termHeight value.
+ */
 val termHeight = 25.dp
 val tokenHeight = termHeight.times(.8f)
 val tokenFontSize = (tokenHeight.value).sp
@@ -110,11 +114,41 @@ fun runTest () {
     //composeStateTerm(term12)
 }
 
+/*
+Data classs to hold a token and the value it should be raised to.
+ */
 class TokenAndExponent(var token: Token, var exponent: Integer)
 
+/*
+This function prints out a list of equations.  The equations are of the form
+dotToken = sum of state variable terms
+It's complicated because it prints out the terms in the right side of the equation in same order for each equation
+which is determined by the order of the equations. Sources are printed at the end. So given
+
+dotx = by + se1 - ax - cz
+dotz = mx - ny + pz + sf2
+doty = sz + qx - ry
+
+The terms would be printed in the order x,z,y so we would get
+dotx = -ax -cz + by + se1
+dotz = mx + pz - ny + sf2
+doty = qx + sz -ry
+
+This done purely for readability and makes it much easier to check results.
+
+First we build a map that maps each state token to an index by examining the list of equations.  So if P-dot is
+in the second equation then P is mapped to index 1 (zero relative).
+Then for each equation we loop through the terms on the right side and store them in an arraylist at the
+appropriate index along with a boolean saying whether to add or subtract the term.  The sources are store in a
+separate array.  Then we pass through the arrays printing out the terms in the correct order.
+
+From the compose point of view things are pretty simple. We have one column of rows where each row is an equation.
+ */
 @Composable
 fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Token, Token>) {
     val tokenToIndexMap = linkedMapOf<Token, Int>()
+
+    // build token to index map
     equations.forEachIndexed { index, eq ->
         val leftSide = eq.leftSide
         if (leftSide !is Token) {
@@ -144,6 +178,7 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
             ) {
                 val rightSide = eq.rightSide
 
+                // print left side of equation and equal sign
                 composeToken(eq.leftSide as Token, "")
                 composeSign("=")
 
@@ -151,14 +186,17 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
                     composeExpression(rightSide)
                    } else {
 
+                    // Create an arraylist for the state terms and initialize it.
                     val expressions = arrayListOf<Pair<Expr?, Boolean>>()
                     repeat(equations.size){
                         expressions.add(Pair(null, false))
                     }
 
-                    val sourceExpressions  = arrayListOf<Pair <Expr, Boolean>>()
+                    val sourceExpressions  = arrayListOf<Pair <Expr, Boolean>>() // list for sources
                     println ("equations.size = ${equations.size}  expressions.size = ${expressions.size}")
 
+                    // loop through the the plus and minus terms of the right side of the equation
+                    // storing each term at the appropriate index in the appropriate list
                     rightSide.plusTerms.forEach{term ->
                         if (isStateVariableExpr(term)){
                             val index = tokenToIndexMap[getTokenFromStateExpression(term)]
@@ -182,6 +220,7 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
                         }
                     }
 
+                    // loop through expressions and compose them onto the row with plus and minus signs.
                     expressions.forEachIndexed { index, pair ->
 
                         if (pair.first != null) {
@@ -197,6 +236,7 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
                         }
                     }
 
+                    // now compose the source expressions.
                     sourceExpressions.forEach { pair ->
                         if (pair.second) {
                             composeSign(minusSign)
@@ -211,7 +251,12 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
     }
 }
 
-fun loadTokenMap(list: ArrayList<Expr>): LinkedHashMap<Token, Int> {
+/*
+loop through the arraylist and count how many times each token appears
+in the list.  Build map relating token to number of occurrences. This
+is used to determine exponents.
+ */
+fun loadTokenToExponentMap(list: ArrayList<Expr>): LinkedHashMap<Token, Int> {
     val map = linkedMapOf<Token, Int>()
     list.forEach { expr ->
         if (expr is Token) {
@@ -229,6 +274,9 @@ fun loadTokenMap(list: ArrayList<Expr>): LinkedHashMap<Token, Int> {
     return map
 }
 
+/*
+Prints out an equation without regard to the order of any terms. Consist of one row.
+ */
 @Composable
 fun composeEquation(equation: Equation){
     Row (Modifier
@@ -244,6 +292,11 @@ fun composeEquation(equation: Equation){
     }
 }
 
+/*
+The BondGraph.derive function has a option for display intermediate results of equations.  This is used for
+debugging.  Each equation has a label so we can see what part of the code generated the result. So this function
+simply prints a string followed by and equation.
+ */
 @Composable
 fun composeLabeledEquation(label: String, equation: Equation){
     Row (Modifier
@@ -263,6 +316,10 @@ fun composeLabeledEquation(label: String, equation: Equation){
     }
 }
 
+/*
+There are four types of expressions, Token, Number, Term, and Sum.  We have a composable function for each
+of these.  This function just evaluates an expression and calls the correct function.
+ */
 @Composable
 fun composeExpression(expr: Expr){
     when (expr) {
@@ -270,6 +327,7 @@ fun composeExpression(expr: Expr){
         is Number -> composeNumber(expr)
         is Term -> composeStateTerm(expr)
         is Sum -> if (sumContainsStateExpressions(expr)) {
+            //Basically, don't put parenthesis around the right side of an equation
             composeSum(expr, false)
         }
             else {
@@ -278,6 +336,16 @@ fun composeExpression(expr: Expr){
     }
 }
 
+/*
+A state term is basically a term multiplied by a state token.  (xy/z)P We want to display these as with the term
+on the left and the token on the right.  If there are fractions, the row will be double height, but we want to
+keep the token and non-fractions centered horizontally in the row.
+        xy
+abP + ----- Q
+        mn
+
+So, split or the term and token (if there is a state token). Then in a row, compose the term followed by the token.
+ */
 @Composable
 fun composeStateTerm(expr: Expr) {
     Row (Modifier
@@ -313,6 +381,11 @@ fun composeStateTerm(expr: Expr) {
     }
 }
 
+/*
+Compose the subscript for a token.  The subscript is an optional string followed by a number.  So
+if the sourceString is nulll, simply text the numberString, else create a row and compose the two strings
+back to back.
+ */
 @Composable
 fun composeSubscript(sourceString: String, numberString: String){
     if (sourceString == "") {
@@ -349,13 +422,22 @@ fun composeSubscript(sourceString: String, numberString: String){
     }
 }
 
-@Composable
-fun composeToken(
-    tokenAndExponent: TokenAndExponent
-) {
-    composeToken(tokenAndExponent.token, tokenAndExponent.exponent.toString())
-}
 
+
+/*
+There are several variations in displaying a token.
+
+    - Most are one letter. like p or R
+    - Sources are two letters Se or Sf. the e and f are printed in smaller font that the Capital S.
+    - All tokens have a numbered subscript.
+    - The one-letter tokens may have an exponent.
+    - If the token is a differential token, then we need to print a dot above the letter.
+
+The composable is a row with two columns.  The first column contains the letter (the S for a source) at
+full height. The second column is either for a source or a single letter.
+    - Source          a subscript e or f followed by a subscript number at the bottom of the column.
+    - single letter   a number subscript on the bottom of the column with an optional exponent on the top.
+ */
 @Composable
 fun composeToken (
     token: Token,
@@ -364,6 +446,10 @@ fun composeToken (
 ) {
     var name: String
     var sourceString: String = ""
+
+    // Determine the letter name.  Start with the name of the token.  Then, if it's a differential token,
+    // add the dot over the top of the letter. Else if the name is a source (Se, Sf) then change the name
+    // to S and store the e or f in sourceString
     val tokenName = token.name.toString()
     name = tokenName
     if (token.differential) {
@@ -393,7 +479,7 @@ fun composeToken (
             //.background(Color.Yellow)
             .fillMaxWidth()
     ) {
-        Column(
+        Column( // column for the letter name
             Modifier
                 //.background(Color.Red)
                 .height(termHeight)
@@ -416,7 +502,7 @@ fun composeToken (
         }
 
         if (name == "S") {
-            Column(
+            Column(  // column for an e or f followed by a number subscript for a source
                 Modifier
                     //.background(Color.White)
                     .height(termHeight)
@@ -428,7 +514,7 @@ fun composeToken (
             ) {
                 composeSubscript(sourceString, subscript)
             }
-        } else {
+        } else {  // column for number subscript on the bottom and a optional exponent on the top.
             Column(
                 Modifier
                     //.background(Color.White)
@@ -452,6 +538,13 @@ fun composeToken (
 
     }
 }
+
+/*
+A Term can be a simple product of tokens and sums or it could be a fraction.  A fraction is basically
+two products placed one above the other separated by a line.  This composable works basically like this.
+If the term has no denominators it is just a row, if the term has denominators, it is column consisting
+of a top row, a separator and then a bottom row.
+ */
 @Composable
 fun composeTerm(term: Term) {
     //val numeratorMap = loadTokenMap(term.numerators)
@@ -466,18 +559,23 @@ fun composeTerm(term: Term) {
             , horizontalAlignment = Alignment.CenterHorizontally
 
         ) {
-            val denominatorMap = loadTokenMap(term.denominators)
             composeTermRow(term.numerators)
+
             Divider(
                 modifier = Modifier.fillMaxWidth(), // Makes the divider fill the available width
                 thickness = 3.dp, // Sets the thickness of the line
                 color = Color.Gray // Sets the color of the line
             )
+
             composeTermRow(term.denominators)
         }
     }
 }
 
+/*
+This composable takes the value of a Number, converts it to a string and puts it in
+a BasicTextField.
+ */
 @Composable
 fun composeNumber(number: Number){
     Column(
@@ -500,6 +598,17 @@ fun composeNumber(number: Number){
     }
 }
 
+/*
+This function is given an arrayList of expressions which is a product i.e. IRC or 2CIC(R + C).
+The list represent either the numerator or denominator of a fraction. This function does several
+things to format the product.
+    - The list may contain one number.  If it does, this is printed first.
+    - If the list contains more than one of any token (like the second example above that has
+      two C's) we will print C with an exponent instead of separate tokens.
+    - if the list contains one element, and it is a sum it can be printed without being surrounded
+      by parenthesis. Otherwise, sums must be enclosed in parentheses.
+The composable is a row with the expressions printed side by side.
+ */
 @Composable
 fun composeTermRow(list: ArrayList<Expr>) {
     Row (Modifier
@@ -512,8 +621,10 @@ fun composeTermRow(list: ArrayList<Expr>) {
                 composeNumber(expr)
             }
         }
-        val map = loadTokenMap(list)
+
+        val map = loadTokenToExponentMap(list)
         composeTokenProduct(map)
+
         val needsParens = list.size > 1
         list.forEach { expr ->
             if (expr is Sum) {
@@ -523,6 +634,11 @@ fun composeTermRow(list: ArrayList<Expr>) {
     }
 }
 
+/*
+This function is given a map that relates tokens to their exponent.  It prints out each token with
+its subscript number and exponent(if the exponent is greater than 1) side by side in a row creating
+a product.
+ */
 @Composable
 fun composeTokenProduct(map: Map<Token, Int>) {
     Row (Modifier
@@ -533,6 +649,10 @@ fun composeTokenProduct(map: Map<Token, Int>) {
     }
 }
 
+/*
+Places a character in a BasicTextField.  The size of the field and the font size
+are determined by the height parameter.
+ */
 @Composable
 fun composeChar(char: String, height: Dp){
     BasicTextField(char
@@ -544,6 +664,11 @@ fun composeChar(char: String, height: Dp){
             .height(height)
     )
 }
+/*
+This function will be given a plus sign or minus sign, which is placed in a text field with some
+padding on each side.  Minus signs are given some bottom since they seem to print a little low
+in my opinion.
+ */
 @Composable
 fun composeSign(sign: String) {
     val bottomPadding = if (sign == minusSign) minusSignBottomPadding else 0.dp
@@ -566,6 +691,14 @@ fun composeSign(sign: String) {
     }
 }
 
+/*
+Prints out a Sum, which is a row of expressions separated by plus signs or minus signs
+and optionally enclosed in parentheses. Each expression could be a Token, Number, Term,
+or another Sum, so this function uses other functions to print these out.  A Term may
+be a fraction so the row may be double height with some expressions using the full
+height and others being just half height.  Half height expressions should be centered
+vertically in the row.
+ */
 @Composable
 fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
     Row (Modifier
@@ -612,55 +745,3 @@ fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
     }
 }
 
-@Composable
-fun Fraction(nominaator: ArrayList<Token>, denominaor: ArrayList<Token>) {
-    Column(Modifier
-        .height(IntrinsicSize.Min)
-        .width(IntrinsicSize.Max)
-        , horizontalAlignment = Alignment.CenterHorizontally
-
-    ) {
-        Row (Modifier
-            .fillMaxWidth()
-            .height((IntrinsicSize.Min))
-
-        )
-        {
-            BasicTextField("("
-                , onValueChange = {}
-                , textStyle = TextStyle(fontSize = (termHeight.value).sp, fontFamily = fontFamily)
-                , modifier = Modifier
-                    //.background(Color.Magenta)
-                    .width(IntrinsicSize.Min)
-                    .height(termHeight)
-            )
-            nominaator.forEach {composeToken(it, "2") }
-            BasicTextField(")"
-                ,onValueChange = {}
-                , textStyle = TextStyle(fontSize = (termHeight.value).sp, fontFamily = fontFamily)
-                , modifier = Modifier
-                    //.background(Color.Magenta)
-                    .width(IntrinsicSize.Min)
-                    .height(termHeight)
-            )
-        }
-
-        Divider(
-            modifier = Modifier.fillMaxWidth(), // Makes the divider fill the available width
-            thickness = 3.dp, // Sets the thickness of the line
-            color = Color.Gray // Sets the color of the line
-        )
-
-
-        Row (Modifier
-            .width(IntrinsicSize.Max)
-            .height(IntrinsicSize.Min)
-            //.background(Color.Yellow)
-            , horizontalArrangement = Arrangement.Center
-        )
-        {
-            denominaor.forEach { composeToken(it, "") }
-        }
-
-    }
-}
