@@ -23,6 +23,8 @@ import bondgraph.AlgebraException
 import bondgraph.Operation
 import bondgraph.Operation.*
 
+
+var count = 0
 /*
 multiply - factored.  Our normal multiply function multiplies each term in a sum.
 So, x + y + z  times a becomes xa + ya + za.  This function returns (x + y + z)a
@@ -57,7 +59,7 @@ fun multiply_f(expr1: Expr, expr2: Expr): Expr {
             }
         }
 
-        return cancel(term)
+        return rationalizeTerm(term)
     }
 
     var workingExpr1: Expr
@@ -71,7 +73,11 @@ fun multiply_f(expr1: Expr, expr2: Expr): Expr {
          (isStateVariableExpr(expr2) || (expr2 is Sum && sumContainsStateExpressions(expr2)))) {
         throw AlgebraException("multiply_f(expr1, expr2) attempt to multiply two expressions that each contain state tokens.  expr1 = ${expr1.toAnnotatedString()}, expr2 = ${expr2.toAnnotatedString()}")
     }
-
+    /*
+    We want to work with the expression that is not a state expression, and the part of the state expression that doesn't
+    include the state variable. From the check above, we know only one expression, if either, is state expression so we can
+    just check both of them.
+     */
     if (isStateVariableExpr(expr1)){
         workingExpr1 = getTermFromStateExpression(expr1)
         stateToken = getTokenFromStateExpression(expr1)
@@ -88,6 +94,10 @@ fun multiply_f(expr1: Expr, expr2: Expr): Expr {
         workingExpr2 = expr2
     }
 
+    /*
+    Check both expressions to see if they are negative. If they are, convert them to positive expressions, and
+    keep track of the sign of the final product, i.e. positive X positive = positive, negative X positive = negative etc.
+     */
     if (exprIsNegative(workingExpr1)) {
         isNegative = true
         workingExpr1 = convertNegativeToPositive(workingExpr1)
@@ -98,6 +108,11 @@ fun multiply_f(expr1: Expr, expr2: Expr): Expr {
         workingExpr2 = convertNegativeToPositive(workingExpr2)
     }
 
+    /*
+    Do the multiplication. If neither expression is a sum, we can use our normal multiply function. If
+    either or both expressions are sums, then use our local multiplyExpressionAndSum() function to do
+    a factored multiply.
+     */
     if (workingExpr1 !is Sum && workingExpr2 !is Sum){
         newExpr = multiply(workingExpr1, workingExpr2)
     } else {
@@ -108,10 +123,13 @@ fun multiply_f(expr1: Expr, expr2: Expr): Expr {
         }
     }
 
+
+    //if final result is negative, then convert newExpr to negative.
     if (isNegative) {
         newExpr = createNegativeExpression(newExpr)
     }
 
+    //create state expression if needed.
     if (isStateExpression){
         return createStateExpression(newExpr, stateToken)
     }
@@ -119,160 +137,27 @@ fun multiply_f(expr1: Expr, expr2: Expr): Expr {
     return newExpr
 }
 
-/*fun multiply_f_old(expr1: Expr, expr2: Expr): Expr {
 
-    var negative = false
-    println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-    println("multiply_f(expr1, expr2)  expr1 = ${expr1.toAnnotatedString()}, expr2 = ${expr2.toAnnotatedString()}")
-
-    fun multiplyExprToTerm(expr: Expr, term: Term): Term {
-        var newTerm = Term()
-
-       *//* var newExpr: Expr
-        var stateToken:Expr = Token()
-        var isStateTerm = false*//*
-
-        newTerm.numerators.addAll(term.numerators)
-        newTerm.denominators.addAll(term.denominators)
-
-        *//*if (isStateVariableExpr(expr)) {
-            newExpr = getTermFromStateExpression(expr)
-            stateToken = getTokenFromStateExpression(expr)
-            isStateTerm = true
-        } else {
-            newExpr = expr
-        }*//*
-
-        println("addExprToTerm(expr,term) expr = ${expr.toAnnotatedString()},  term = ${term.toAnnotatedString()}")
-        when (expr) {
-            is Token -> newTerm.numerators.add(expr)
-            is Number -> newTerm.numerators.add(expr)
-            is Term -> {
-                newTerm.numerators.addAll(expr.numerators)
-                newTerm.denominators.addAll(expr.denominators)
-            }
-            is Sum -> {
-                if (expr.plusTerms.isEmpty()){
-                    val sum = Sum()
-                    sum.plusTerms.addAll(expr.minusTerms)
-                    newTerm.numerators.add(sum)
-                    negative = ! negative
-                } else {
-                    newTerm.numerators.add(expr)
-                }
-            }
-        }
-        *//*if (isStateTerm){
-            val term = Term()
-            term.add(newTerm)
-            term.add(stateToken)
-            return term
-        }*//*
-        if (newTerm.denominators.isEmpty() && newTerm.numerators.size == 1){
-            return newTerm.numerators[0]
-        }
-        return newTerm
-    }
-
-    if (expr1.equals(Number(0.0)) || expr2.equals(Number(0.0))) {
-        return Number(0.0)
-    }
-
-    if (expr1.equals(Number(1.0))){
-        return expr2
-    }
-
-    if (expr2.equals(Number(1.0))) {
-        return expr1
-    }
-
-    if (expr1 !is Sum && expr2 !is Sum) {
-        return multiply(expr1, expr2)
-    }
-
-    if (expr1 !is Sum && expr2 is Sum && expr2.plusTerms.isEmpty() && expr2.minusTerms.size == 1){
-        return multiply(expr1, expr2)
-    }
-
-    if (expr2 !is Sum && expr1 is Sum && expr1.plusTerms.isEmpty() && expr1.minusTerms.size == 1){
-        return multiply(expr1, expr2)
-    }
-
-    if (expr1 is Sum && expr1.plusTerms.isEmpty() && expr1.minusTerms.size == 1 &&
-        expr2 is Sum && expr2.plusTerms.isEmpty() && expr2.minusTerms.size == 1 ) {
-        return multiply(expr1, expr2)
-    }
-
-
-
-    var term = Term()
-    var firstExpr: Expr
-    var secondExpr: Expr
-    var stateToken: Expr = Token()
-    var isStateTerm = false
-
-    if (isStateVariableExpr(expr1) && isStateVariableExpr(expr2)){
-        throw AlgebraException("multiply_f(expr, expr) attempt to multiply two state variable expressions. expr1 = ${expr1.toAnnotatedString()}, expr2 = ${expr2.toAnnotatedString()}")
-    }
-
-    firstExpr = expr1
-    secondExpr = expr2
-
-    if (isStateVariableExpr(expr1)){
-        firstExpr = getTermFromStateExpression(expr1)
-        stateToken = getTokenFromStateExpression(expr1)
-        isStateTerm = true
-    }
-
-    if (isStateVariableExpr(expr2)){
-        secondExpr = getTermFromStateExpression(expr2)
-        stateToken = getTokenFromStateExpression(expr2)
-        isStateTerm = true
-    }
-    println("multiply_f firstExpr = ${firstExpr.toAnnotatedString()}")
-    term = multiplyExprToTerm(firstExpr, term)
-    println("multiply_f term = ${term.toAnnotatedString()}, secondExpr = ${secondExpr.toAnnotatedString()}")
-    term = multiplyExprToTerm(secondExpr, term)
-    println("multiply_f term = ${term.toAnnotatedString()}")
-
-    val newTerm = cancel(term)
-
-    var newExpr: Expr
-    if (negative){
-        newExpr = Sum()
-        newExpr.minusTerms.add(newTerm)
-    } else {
-        newExpr = newTerm
-    }
-
-    if (isStateTerm){
-        val newTerm2 = Term()
-        newTerm2.numerators.add(newExpr)
-        newTerm2.numerators.add(stateToken)
-        println("multiply_f return state term, newTerm = ${newTerm2.toAnnotatedString()}")
-        return newTerm2
-    }
-
-    return newExpr
-
-}*/
 
 
 /*
-Add expr1 and expr2 returning a single term over a common denominator if necessary.
+Add or subtract expr1 and expr2 returning a single term over a common denominator if necessary.
 Steps:
+    - Convert each expression to a positive expression. Set flags to keep track of the sign of each
+      expression.  This affects whether to add or subtract the positive expressions, and how to
+      interpret the sign of the result.
     - Break the expressions apart.  Create expressions that represent the numerator of each expression.
     - Create a list of terms in the denominators of each expression.  List may be empty.
     - Pass the lists to the commonDenominator function to create a common denominator, also a list.
     - For each expression, pass its denominator list along with the common denominator to the getNumeratorFactor function
       to generate a factor.
     - Multiply the numerator of each expression by its corresponding factor.
-    - Add these two products together.
+    - Add these two products together to create a sum.
     - Create a term from the common denominator list.
     - Divide the sum by the common denominator term.
     Ex:
     ab/mn + cd/xym
-    numerators ab and cd.  list1 {m,m} list2 {x,y,m}
+    numerators ab and cd.  list1 {m,n} list2 {x,y,m}
     common denominator list {x,y,m,n}
     factor1 xy  factor2 n
     product1 (ab)(xy) = abxy  product2 cdn
@@ -281,8 +166,39 @@ Steps:
  */
 fun addSubtract_cd(expr1: Expr, expr2: Expr, operation: Operation): Expr {
     println("addSubtract_cd called expr1 = ${expr1.toAnnotatedString()},  expr2 = ${expr2.toAnnotatedString()}, operation = $operation")
-    val numerator1 = getNumerator(expr1)
-    val numerator2 = getNumerator(expr2)
+
+    fun createNegativeTerm(numerator: Expr, divisor: Expr): Expr {
+        /*
+        We have negative numerator.  We want to create a fraction where the
+        whole fraction is negative.  i.e convert something like  -ab/xy to -(ab/xy)
+         */
+        val newNumerator = convertNegativeToPositive(numerator)
+        val sum = Sum()
+        sum.minusTerms.add(divide_cd(newNumerator, divisor))
+        return sum
+    }
+    var workingExpr1 = expr1
+    var workingExpr2 = expr2
+    var expr1_Positive = true
+    var expr2_Positive = true
+    var expr1_Negative = false
+    var expr2_Negative = false
+
+    if (expr1 is Sum && expr1.plusTerms.isEmpty() && expr1.minusTerms.size == 1){
+        workingExpr1 = convertNegativeToPositive(expr1)
+        expr1_Positive = false
+        expr1_Negative = true
+    }
+
+    if (expr2 is Sum && expr2.plusTerms.isEmpty() && expr2.minusTerms.size == 1){
+        workingExpr2 = convertNegativeToPositive(expr2)
+        expr2_Positive = false
+        expr2_Negative = true
+    }
+
+    val numerator1 = getNumerator(workingExpr1)
+    val numerator2 = getNumerator(workingExpr2)
+
 
     /*if (numerator1.equals(Number(0.0))) {
         return expr2
@@ -291,33 +207,91 @@ fun addSubtract_cd(expr1: Expr, expr2: Expr, operation: Operation): Expr {
         return expr1
     }
 
-    val denominators1 = getDenominatorList(expr1)
-    val denominators2 = getDenominatorList(expr2)
+    val denominators1 = getDenominatorList(workingExpr1)
+    val denominators2 = getDenominatorList(workingExpr2)
     val commonDenominatorList = commonDenominator(denominators1, denominators2)
+
     val factor1 = getNumeratorFactor(denominators1, commonDenominatorList)
     val factor2 = getNumeratorFactor(denominators2, commonDenominatorList)
-    /*val product1 = multiply_f(numerator1, factor1)
-    val product2 = multiply_f(numerator2, factor2)*/
+
     val product1 = multiply(numerator1, factor1)
     val product2 = multiply(numerator2, factor2)
     println("numerator1 = ${numerator1.toAnnotatedString()} factor1 = ${factor1.toAnnotatedString()} product1 = ${product1.toAnnotatedString()}")
     println("numerator2 = ${numerator2.toAnnotatedString()} factor2 = ${factor2.toAnnotatedString()} product2 = ${product2.toAnnotatedString()}")
-    var sum: Expr
-    if (operation == ADD) {
-        sum = add(product1, product2)
-    } else {
-        sum = subtract(product1, product2)
-    }
-    println("addSubtract_cd  sum = ${sum.toAnnotatedString()}")
+    val divisor = generateTermFromList(commonDenominatorList)
 
-    val newExpr =  divide_cd(sum, generateTermFromList(commonDenominatorList))
-    println("addSubtract_cd returning newExpr = ${newExpr.toAnnotatedString()}")
-    return newExpr
+    if (operation == ADD) {
+        when {
+
+            expr1_Positive && expr2_Positive -> {
+                return divide_cd(product1.add(product2), divisor)
+            }
+
+            expr1_Positive && expr2_Negative -> {
+                val numerator = product1.subtract(product2)
+                if (exprIsNegative(numerator)){
+                   return createNegativeTerm(numerator, divisor)
+                } else {
+                    return divide_cd(numerator, divisor)
+                }
+            }
+
+            expr1_Negative && expr2_Positive -> {
+                val numerator = product2.subtract(product1)
+                if (exprIsNegative(numerator)){
+                    return createNegativeTerm(numerator, divisor)
+                } else {
+                    return divide_cd(numerator, divisor)
+                }
+            }
+
+            expr1_Negative && expr2_Negative -> {
+                val numerator = product1.add(product2)
+                val sum = Sum()
+                sum.minusTerms.add(divide_cd(numerator, divisor))
+                return sum
+            }
+        }
+    } else { // operation is SUBTRACT
+        when {
+
+            expr1_Positive && expr2_Positive -> {
+                val numerator = product1.subtract(product2)
+                if (exprIsNegative(numerator)) {
+                    return createNegativeTerm(numerator, divisor)
+                } else {
+                    return divide_cd(numerator, divisor)
+                }
+            }
+
+            expr1_Positive && expr2_Negative -> {
+                return divide_cd(product1.add(product2), divisor)
+            }
+
+            expr1_Negative && expr2_Positive -> {
+                val numerator = product1.add(product2)
+                val sum = Sum()
+                sum.minusTerms.add(divide_cd(numerator, divisor))
+                return sum
+            }
+
+            expr1_Negative && expr2_Negative -> {
+                val numerator = product2.subtract(product1)
+                if (exprIsNegative(numerator)) {
+                    return createNegativeTerm(numerator, divisor)
+                } else {
+                    return divide_cd(numerator, divisor)
+                }
+            }
+        }
+
+    }
+   return Term()  // shouldn't reach here
 }
 
 /*
-This function adds two state expression. A state expression has the general
-form term x state variable  or sum x state variable so x P  Term(xy)P (a + b)P
+This function adds two state expressions. A state expression has the general
+form term X state variable  or sum X state variable so, Term(xy)P (a + b)P
 We want to add these expressions over a common denominator and create a new
 state expression. So the steps are
     - get the terms for each expression
@@ -341,22 +315,14 @@ fun addSubtractStateExpressions(expr1: Expr, expr2: Expr, operation: Operation):
     val term2 = getTermFromStateExpression(expr2)
     val newTerm = addSubtract_cd (term1, term2, operation)
     println ("addSubtractStateExpressions(expr, expr) expr1 ${expr1.toAnnotatedString()}, expr2 = ${expr2.toAnnotatedString()}, operation = $operation, newTerm = ${newTerm.toAnnotatedString()}")
-   /* if (newTerm is Sum && newTerm.plusTerms.isEmpty() && newTerm.minusTerms.size == 1){
-        val sum = Sum()
-        term3.numerators.add(newTerm.minusTerms[0])
-        term3.numerators.add(token1)
-        sum.minusTerms.add(term3)
-        return sum
-    }
-    term3.numerators.add(newTerm)
-    term3.numerators.add(token1)*/
+
     val term3 = createStateExpression(newTerm, token1)
     return term3
 }
 
 
 /*
-The next set of functions deals with adding subtracting a state expression to/from a Sum.
+The next set of functions deals with adding/subtracting a state expression to/from a Sum.
 If the sum contains a matching state expression we want to combine the expressions into
 one term and use the new term in the new Sum.  This opens up a can of worms on whether to add or
 subtract the two expressions and whether to put the new expression in the plusTerms or
@@ -389,122 +355,154 @@ the code in the add() and subtract() functions more readable. But if we write th
 first one addSumToExpression the next two are easy. addExpressionToSum can just call
 addSumToExpression directly.  and subtractSumFromExpression can also use
 addSumToExpression by passing in a negated value of the sum.
+
+Then is turned out that the addExpressionToSum and subtractExpressionFromSum were almost
+identical, so I wound up writing the addSubtractExpressionToFromSum function which handles
+both cases.
  */
-class ExpressionAndList(var expr: Expr?, val list: List<Expr>)
+
 
 /*
-This function searches the list for any state expressions that match expr,
-that is they have the same state token. If it finds one, it performs the operation
-using the addSubtractStateExpressions() function. Normally the order is
-(expr) operation (expr from list) but if reverse is true we reverse the order
-(expr from list ) operation (expr)  Then we put the result in the expr field
-of an ExpressionAndList object. Expressions that don't match are added to
-the list of the ExpressionAndList object.
-The idea here is that the input list will be either the plusTerms or the minusTerms of
-a Sum.  The expr is going to be added to the sum, and we want the sum to contain
-just one term for each state token. Calling code must decide whether the new expression
-goes into the plusTerms or the minusTerms of the new Sum which is a convoluted and
-explained below. This is why the new expression is set aside in a separate field.
-So the result is either a new expression and a copy of the rest of the list or
-a null expression and a copy of the entire list plus the original expression.
+The idea behind the following function, is to search the sum (if it is a sum) for a term
+that has the same state token as the expression.  If it finds one, it removes it from the
+sum and returns it as the first element in a pair, and the remining sum as the second element.
+But there are other cases we want to handle, if the second parameter isn't really a sum.
+
+If it is Token then if the token matches the state expression return Pair(token, null) else
+create a new sum containing the token and return Pair(null, newSum)
+
+If the second parameter is a term then check to see if it matches the state expression.  If
+it does, return its term (expression minus the state token) in a Pair(term, null). Otherwise
+create a new sum from the state term and return Pair(null, newSum)
+
+Otherwise search the sum for a matching state term.  If the match is found in the minusTerms
+of the sum, then create a new sum with a single minusTerm containing the match and return
+that.
+
  */
-fun addStateExprToList (expr: Expr, list: ArrayList<Expr>, operation: Operation, reverse: Boolean): ExpressionAndList {
-    var newExpr: Expr? = null
-    var saveExpr: Expr = Term()
-    val newList = ArrayList<Expr>()
-    var foundOne: Boolean = false
+fun separateMatchingStateExpressionFromSum(expr: Expr, sum: Expr): Pair<Expr?, Sum?>{
 
     if ( ! isStateVariableExpr(expr)) {
-        throw AlgebraException("addStateExprToList called with expression that is not a state expression.  expr = ${expr.toAnnotatedString()}")
+        throw AlgebraException("separateMatchingStateExpressionFromSum(expr, sum) called with expr that is not a state expression,  expr = ${expr.toAnnotatedString()}")
     }
 
-    list.forEach { loopExpr ->
-        if (matchingStateExpressions(expr, loopExpr)) {
+    println("separateMatchingStateExpressionFromSum(expr, sum)  expr = ${expr.toAnnotatedString()}, sum = ${sum.toAnnotatedString()}")
 
-            if (foundOne) {
-                throw AlgebraException("the addStateExprToList function found more than one matching term in the list. " +
-                "expr= ${expr.toAnnotatedString()}, first match = ${saveExpr.toAnnotatedString()}, second match = ${loopExpr.toAnnotatedString()} ")
-            }
 
-            saveExpr = loopExpr.clone()
-            foundOne = true
-            if (reverse) {
-                println("addStateExprToList(expr, list, operation, boolean), calling addSubtractStateExpression loopExpr = ${loopExpr.toAnnotatedString()}, expr = ${expr.toAnnotatedString()}, operation = $operation, reverse = $reverse ")
-                newExpr = addSubtractStateExpressions(loopExpr, expr, operation)
+    val targetToken = getTokenFromStateExpression(expr)
+
+    when (sum) {
+
+        is Token -> {
+            if (targetToken.equals(sum)) {
+                return Pair(targetToken, null)
             } else {
-                println("addStateExprToList(expr, list, operation, boolean), calling addSubtractStateExpression loopExpr = ${loopExpr.toAnnotatedString()}, expr = ${expr.toAnnotatedString()}, operation = $operation, reverse = $reverse ")
-
-                newExpr = addSubtractStateExpressions(expr, loopExpr, operation)
+                val newSum = Sum()
+                newSum.plusTerms.add(sum)
+                return Pair(null, newSum)
             }
+        }
+
+        is Number -> {} // won't happen since we know sum is a state variable expression, which can't be a lone number
+
+        is Term -> {
+            if (getTokenFromStateExpression(sum) == targetToken) {
+                return Pair(getTermFromStateExpression(sum), null)
+            } else {
+                val newSum = Sum()
+                newSum.plusTerms.add(sum)
+                return Pair(null, newSum)
+            }
+        }
+
+        is Sum -> {
+            var matchingExpression: Expr? = null
+            var alreadyFoundOne = false;
+            var newSum:Sum = Sum()
+
+            sum.plusTerms.forEach { loopExpr ->
+                if (matchingStateExpressions(loopExpr, expr)) {
+                    if (alreadyFoundOne) {
+                        throw AlgebraException("separateMatchingStateExpressionFromSum(expr, sum) has more than one term with the same state variable. State variable = ${targetToken.toAnnotatedString()},  sum = ${sum.toAnnotatedString()}")
+                    } else {
+                        matchingExpression = loopExpr
+                        alreadyFoundOne = true
+                    }
+                } else {
+                    newSum.plusTerms.add(loopExpr)
+                }
+            }
+
+            sum.minusTerms.forEach {loopExpr ->
+                if (matchingStateExpressions(loopExpr, expr)) {
+                    if (alreadyFoundOne) {
+                        throw AlgebraException("separateMatchingStateExpressionFromSum(expr, sum) has more than one term with the same state variable. State variable = ${targetToken.toAnnotatedString()},  sum = ${sum.toAnnotatedString()}")
+                    } else {
+                        matchingExpression = createNegativeExpression(loopExpr)
+                        alreadyFoundOne = true
+                    }
+                } else {
+                    newSum?.minusTerms?.add(loopExpr)
+                }
+            }
+
+            if (newSum.plusTerms.size + newSum.minusTerms.size == 0){
+                return Pair(matchingExpression, null)
+            }
+            return Pair(matchingExpression, newSum)
+        }
+    }
+
+    return Pair(null, null)  // should never get here.
+}
+
+fun addSubtractStateExpressionToFromSum(expr: Expr, sum: Sum, operation: Operation): Expr {
+
+    if ( ! isStateVariableExpr(expr)) {
+        throw AlgebraException("addSubtractStateExpressionToFromSum(expr, sum) called with expression that is not a state expression.  expr = ${expr.toAnnotatedString()}")
+    }
+    println ("addStateExpressionToSum(expr, sum)  expr = ${expr.toAnnotatedString()}, sum = ${sum.toAnnotatedString()}")
+
+    var finalSum = Sum()
+    var newTerm: Expr
+    val expressionPair = separateMatchingStateExpressionFromSum(expr, sum)
+
+    // Start building the final sum from the remaining sum in Pair.second if it's not null
+    if (expressionPair.second != null){
+        finalSum = expressionPair.second!!
+    }
+
+    // If there is no matching state expression in the original sum, then just add or subtract the
+    // expression to the original sum and return the new sum.  Otherwise, add/subtract the expression
+    // from its matching expression in the sum to create a new term.
+    if (expressionPair.first == null) {
+        if (operation == ADD) {
+            finalSum.plusTerms.add(expr)
         } else {
-            newList.add(loopExpr)
+            finalSum.minusTerms.add(expr)
         }
-    }
-
-    return ExpressionAndList(newExpr, newList)
-
-}
-
-fun createSumFromExprAndLists(plusTermsData: ExpressionAndList, minusTermsData: ExpressionAndList, originalExpr: Expr, operation: Operation): Expr{
-    val sum = Sum()
-    sum.plusTerms.addAll(plusTermsData.list)
-    sum.minusTerms.addAll(minusTermsData.list)
-    println("createSumFromExprAndLists sum = ${sum.toAnnotatedString()}")
-    if (plusTermsData.expr != null){
-        println("createSumFromExprAndLists plusTerms expr  = ${plusTermsData.expr!!.toAnnotatedString()}")
-        sum.plusTerms.add(plusTermsData.expr!!)
-
+        return finalSum
     } else {
-        if (minusTermsData.expr != null) {
-            if (operation == ADD) {
-                sum.plusTerms.add(minusTermsData.expr!!)
-            } else {
-                sum.minusTerms.add(minusTermsData.expr!!)
-            }
-        }else {
-            if (operation == ADD) {
-                sum.plusTerms.add(originalExpr)
-            } else {
-                sum.minusTerms.add(originalExpr)
-            }
-        }
+        newTerm = addSubtractStateExpressions(expressionPair.first as Expr, expr, operation)
     }
 
-    if (sum.plusTerms.size == 1 && sum.minusTerms.size == 0){
-        return sum.plusTerms[0]
+    // The new state expression may be of the form (negative sum)Token. We don't want to add this
+    // back to the sum.  We want to subtract the positive form of this expression from the sum.
+    // i.e. we want aT1 - bT2 not aT1 + (-b)T2
+    val newTermTermPart = getTermFromStateExpression(newTerm)
+    if (exprIsNegative(newTermTermPart)) {
+        val pos =  convertNegativeToPositive(newTermTermPart)
+        val se = createStateExpression(pos, getTokenFromStateExpression(newTerm))
+        finalSum.minusTerms.add(se)
+    } else {
+        finalSum.plusTerms.add(newTerm)
     }
-    println("createsumFromExprAndLists sum = ${sum.toAnnotatedString()}")
-    return sum
-}
 
-fun notStateExpressionMsg(expr: Expr, functionName: String): String {
-    return "$functionName called with expression that is not a state expression. expr = ${expr.toAnnotatedString()}"
-}
-
-fun moreThanOneMsg(expr1: Expr, expr2: Expr, expr3: Expr, functionName: String ): String {
-    return "$functionName found two expression in the sum that match expr.  \" +\n" +
-            "        \"expr = ${expr1.toAnnotatedString()},  first new expression = ${expr2.toAnnotatedString()}, \" +\n" +
-            "        \"second new expression = ${expr3.toAnnotatedString()}"
+    return finalSum
 }
 
 fun addStateExpressionToSum(expr: Expr, sum: Sum): Expr {
-
-    println("addStateExpressionToSum  expr = ${expr.toAnnotatedString()},  sum = ${sum.toAnnotatedString()}")
-    if ( ! isStateVariableExpr(expr)) {
-        throw AlgebraException(notStateExpressionMsg(expr, "addStateExpressionToSum"))
-    }
-    println("addStateExpressionFromSum(expr, sum) expr = ${expr.toAnnotatedString()}, sum = ${sum.toAnnotatedString()}")
-
-    val plusTermsExprAndList = addStateExprToList(expr, sum.plusTerms, ADD, false)
-    if (plusTermsExprAndList.expr != null)println("addStateExpressionToSum  expr = ${plusTermsExprAndList.expr!!.toAnnotatedString()}")
-    val minusTermsExprAndList = addStateExprToList(expr, sum.minusTerms, Operation.SUBTRACT, false)
-    //println("addStateExpressionToSum  sum = ${sum.toAnnotatedString()}")
-
-    if (plusTermsExprAndList.expr != null && minusTermsExprAndList.expr != null) {
-        throw AlgebraException(moreThanOneMsg(expr, plusTermsExprAndList.expr!!, minusTermsExprAndList.expr!!,"addStateExpressionToSum"))
-    }
-
-    return createSumFromExprAndLists(plusTermsExprAndList, minusTermsExprAndList, expr,  ADD)
+    return addSubtractStateExpressionToFromSum(expr, sum, ADD)
 }
 
 fun addSumToStateExpression (expr: Expr, sum: Sum): Expr {
@@ -521,38 +519,8 @@ fun subtractSumFromStateExpression(expr: Expr, sum: Sum): Expr {
 }
 
 fun subtractStateExpressionFromSum(expr: Expr, sum: Sum): Expr {
-
-    if ( ! isStateVariableExpr(expr)) {
-        throw AlgebraException(notStateExpressionMsg(expr, "subtractStateExpressionFromSum"))
-    }
-
-    println("subtractStateExpressionFromSum(expr, sum) expr = ${expr.toAnnotatedString()}, sum = ${sum.toAnnotatedString()}")
-    val plusTermsExprAndList = addStateExprToList(expr, sum.plusTerms, SUBTRACT, true)
-    val minusTermsExprAndList = addStateExprToList(expr, sum.minusTerms, ADD, false)
-
-    if (plusTermsExprAndList.expr != null && minusTermsExprAndList.expr != null) {
-        throw AlgebraException(moreThanOneMsg(expr, plusTermsExprAndList.expr!!, minusTermsExprAndList.expr!!,"subtractStateExpressionToSum"))
-    }
-
-    return createSumFromExprAndLists(plusTermsExprAndList, minusTermsExprAndList, expr, Operation.SUBTRACT)
+    return addSubtractStateExpressionToFromSum(expr, sum, SUBTRACT)
 }
-
-/*
-fun subtractSumFromStateExpression(expr: Expr, sum: Sum): Expr {
-
-    if ( ! isStateVariableExpr(expr)) {
-        throw AlgebraException(notStateExpressionMsg(expr, "subtractSumFromStateExpression"))
-    }
-
-    val plusTermsExprAndList = addStateExprToList(expr, sum.plusTerms, SUBTRACT, false)
-    val minusTermsExprAndList = addStateExprToList(expr, sum.minusTerms, ADD, false)
-
-    if (plusTermsExprAndList.expr != null && minusTermsExprAndList.expr != null) {
-        throw AlgebraException(moreThanOneMsg(expr, plusTermsExprAndList.expr!!, minusTermsExprAndList.expr!!,"subtractSumFromStateExpression"))
-    }
-
-    return createSumFromExprAndLists(plusTermsExprAndList, minusTermsExprAndList, Operation.ADD)
-}*/
 
 /*
 When we add or subtract a sum from a sum,  we must take avery expression in one sum,
@@ -566,14 +534,6 @@ expression in succeeding calls to add/subtract to build a new sum.
 fun addSubtractStateExpressionListFromSum(list: ArrayList<Expr>, sum: Sum, operation: Operation): Expr {
     //var newSum = Sum()
     var newExpr: Expr
-
-   /* fun doOp(exp: Expr){
-        if (operation == ADD){
-            newSum.plusTerms.add(exp)
-        } else {
-            newSum.minusTerms.add(exp)
-        }
-    }*/
 
     newExpr = Sum()
     newExpr.plusTerms.addAll(sum.plusTerms)
@@ -596,7 +556,8 @@ fun addSubtractStateExpressionListFromSum(list: ArrayList<Expr>, sum: Sum, opera
 
 
 /*
-This function takes a sum and converts it to a term with a common denominator
+This function takes a sum and converts it to a term with a common denominator. It does this by
+making repeated calls to addSubtract_cd() building up the new fraction one term at a time.
  */
 fun convertSumToCommonDenominator(sum: Sum): Expr{
     var newExpr: Expr = Number(0.0)
@@ -614,6 +575,9 @@ fun convertSumToCommonDenominator(sum: Sum): Expr{
     return newExpr
 }
 
+/*
+Convert the sum to a new term over a common denominator and then multiply the new term by expr.
+ */
 fun multiplySumByStateExpression(expr: Expr, sum: Sum): Expr {
 
     println("multiplySumByStateExpression(expr, sum) expr = ${expr.toAnnotatedString()}, sum = ${sum.toAnnotatedString()}")
@@ -624,16 +588,26 @@ fun multiplySumByStateExpression(expr: Expr, sum: Sum): Expr {
     val cdTerm = convertSumToCommonDenominator(sum)
 
     if (cdTerm is Sum){
+        // if we got back a sum, it means there were no terms in the sum that were fractions, so we
+        // just got back the original sum. If we call multiply(expr, cdTerm) in this case, we will
+        // recurse infinitely. So we must handle  this case here.
         val term = Term()
         val stateTerm = getTermFromStateExpression(expr)
+
+        // Start building a term from the term in the original state expression.
         println("multiplySumByStateExpression(expr, sum) stateTerm = ${stateTerm.toAnnotatedString()}")
         if (stateTerm is Term) {
             term.numerators.addAll(stateTerm.numerators)
             term.denominators.addAll(stateTerm.denominators)
         } else {
-            term.numerators.add(stateTerm)
+            if ( ! (stateTerm is Number && stateTerm.equals(Number(1.0)))) {
+                term.numerators.add(stateTerm)
+            }
         }
         var newExpr: Expr
+
+        // If cdTerm, which is a sum, is all negative, then we want to build an entirely negative
+        // term, not a term with a negative expression as part of the numerator.
         if (cdTerm.plusTerms.isEmpty()){
             val sum = Sum()
             sum.plusTerms.addAll(cdTerm.minusTerms)
@@ -645,6 +619,7 @@ fun multiplySumByStateExpression(expr: Expr, sum: Sum): Expr {
             term.numerators.add(cdTerm)
             newExpr = term
         }
+        println("multiplySumByStateExpression newExpr = ${newExpr.toAnnotatedString()} stateToken = ${getTokenFromStateExpression(expr).toAnnotatedString()}")
         val newStateTerm = createStateExpression(newExpr, getTokenFromStateExpression(expr))
         return newStateTerm
     }
@@ -652,8 +627,11 @@ fun multiplySumByStateExpression(expr: Expr, sum: Sum): Expr {
     return multiply(expr, cdTerm)
 }
 
+/*
+Multiply every term in the sum by the expression.
+ */
 fun multiplySumByExpression(expr: Expr, sum: Sum): Expr{
-
+    println("multiplySumByExpression(expr, sum) expr = ${expr.toAnnotatedString()}, sum = ${sum.toAnnotatedString()}")
     if (expr is Sum) {
         throw AlgebraException("multiplySumByExpression called with an expression that is a sum.  expr = ${expr.toAnnotatedString()}, sum = ${sum.toAnnotatedString()}")
     }
@@ -691,12 +669,17 @@ fun divide_cd(expr1: Expr, expr2: Expr): Expr {
         return divide(expr1, expr2)
     }
 
+    if (expr1.plusTerms.isEmpty() && expr1.minusTerms.isEmpty()){
+        return Number(0.0)
+    }
+
     if (expr2 is Number && expr2.value == 1.0){
         return expr1.clone()
     }
 
-    if (expr1.plusTerms.isEmpty() && expr1.minusTerms.size == 1){
-        newExpr = expr1.minusTerms[0]
+
+    if (expr1.plusTerms.isEmpty()){
+        newExpr = negate(expr1)
         negative = true
     } else {
         newExpr = expr1
@@ -711,6 +694,8 @@ fun divide_cd(expr1: Expr, expr2: Expr): Expr {
         term.denominators.addAll(expr2.numerators)
     }
 
+    println("divide_cd newExpr = ${newExpr.toAnnotatedString()},  term = ${term.toAnnotatedString()}, negative = $negative")
+
     if (negative){
         return createNegativeExpression(term)
     }
@@ -720,6 +705,9 @@ fun divide_cd(expr1: Expr, expr2: Expr): Expr {
 
 }
 
+/*
+get the term from the state expression and divide it by expr and then create a new state expression from the quotient.
+ */
 fun divideStateExpressionByExpression(stateExpression: Expr, expr: Expr): Expr {
 
     if ( ! isStateVariableExpr(stateExpression)) {
@@ -730,8 +718,10 @@ fun divideStateExpressionByExpression(stateExpression: Expr, expr: Expr): Expr {
         throw AlgebraException("divideStateExpressionByExpression(expr, expr) called with two state variable expressions. stateExpression = ${stateExpression.toAnnotatedString()}, expr = ${expr.toAnnotatedString()}")
     }
 
+    val stateTerm = getTermFromStateExpression(stateExpression)
+    println("divideStateExpressionByExpression(stateExpr, expr) state expression term = ${stateTerm.toAnnotatedString()}: ${stateTerm::class.simpleName},  expr = ${expr.toAnnotatedString()}: ${expr::class.simpleName}")
 
-    val newExpr = divide(getTermFromStateExpression(stateExpression), expr)
+    val newExpr = divide(stateTerm, expr)
 
     val term = createStateExpression(newExpr, getTokenFromStateExpression(stateExpression))
     println("divideStateExpressionByExpression(stateExpr, expr) stateExpr = ${stateExpression.toAnnotatedString()}, expr = ${expr.toAnnotatedString()}, newExpr = ${newExpr.toAnnotatedString()}, new state expr = ${term.toAnnotatedString()}")

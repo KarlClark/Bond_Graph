@@ -30,8 +30,8 @@ import androidx.compose.ui.unit.sp
 var pathToBondGraphFile: Path? = null
 val runTestCases = false
 val runTestCases_2 = false
-val runTestCases_3 = true
-val runTestCases_4 = false
+val runTestCases_3 = false
+val runTestCases_4 = true
 val runTestCases_5 = false
 
 /* TODO
@@ -69,8 +69,6 @@ fun main() = application {
         @Composable
         fun runWindows() {
 
-
-
             if (currentState.exit) {
                 println("exit function valuesSetHasChanged = ${bondGraph.valuesSetHasChanged}")
                 if (bondGraph.valuesSetHasChanged){
@@ -100,11 +98,26 @@ fun main() = application {
         if(state.showResultsWindow){
             println("show results window")
             currentState.resultsWindowState.isMinimized = false
-
-
             resultsWindow()
             currentState.resultsWindowOnTop = true
             currentState.resultsWindowOnTop = false
+        }
+
+        //showTestWindow()
+        if (state.showTestWindow){
+            println("show test window")
+            currentState.testWindowState.isMinimized = false
+            testWindow()
+            currentState.testWindowOnTop = true
+            currentState.testWindowOnTop = false
+        }
+
+        if (state.showComposedResultsWIndow){
+            println ("show composedResults window")
+            currentState.composedResultsWindowState.isMinimized = false
+            composedResultsWindow()
+            currentState.composedResultsWindowOnTop = true
+            currentState.composedResultsWindowOnTop = false
         }
 
         if (showDialog) {

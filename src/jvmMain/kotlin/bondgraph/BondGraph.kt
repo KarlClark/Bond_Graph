@@ -15,6 +15,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromHexString
 import kotlinx.serialization.encodeToHexString
 import userInterface.MyConstants
+import userInterface.showComposedResults
 import userInterface.showResults
 import java.util.LinkedList
 var displayIntermediateResults = true
@@ -291,6 +292,9 @@ class BondGraph(var name: String) {
     var newElementId = 0
     var newBondId = 0
     var newValueSetId = 1
+    val intermediateResults = mutableStateListOf<Pair<String, Equation>>()
+    val finalResults = mutableStateListOf<Equation>()
+    val dotTokenToTokenMap = hashMapOf<Token, Token>()
 
 
 
@@ -915,7 +919,7 @@ class BondGraph(var name: String) {
                     equations.add(equation)
                     tokenToElementMap.put(equation.leftSide as Token, it)
                     println("derived equation = ${equation.toAnnotatedString()}")
-                    if (displayIntermediateResults) results.add(AnnotatedString("1- ") + equation.toAnnotatedString())
+                    if (displayIntermediateResults) intermediateResults.add(Pair("1- ", equation))
                 }
 
                 val solvedEquations = solve(equations)
@@ -931,6 +935,9 @@ class BondGraph(var name: String) {
         try {
 
             results.clear()
+            intermediateResults.clear()
+            finalResults.clear()
+            dotTokenToTokenMap.clear()
 
 /*
           Create a name for each element based on its type
@@ -945,6 +952,7 @@ class BondGraph(var name: String) {
                 it.createTokens()
                 if (it is Capacitor || it is Inertia) {
                     eTokenToEDotTokenMap[(it as OnePort).eToken] = (it).eDotToken
+                    dotTokenToTokenMap [it.eDotToken] = (it as OnePort).eToken
                 }
                 if (it is OnePort) {
                     it.setValue(valuesSetWorkingCopy!!.onePortValues[it])
@@ -967,15 +975,17 @@ class BondGraph(var name: String) {
                     println("derivative causality calling derive equation on ${it.displayId}")
                     val equation = (it as OnePort).deriveEquation()
                     equations.add(equation)
-                    if (displayIntermediateResults) results.add(buildAnnotatedString { append("Equation -> ") ; append(equation.toAnnotatedString())})
+                    if (displayIntermediateResults) intermediateResults.add(Pair("Equation -> ", equation))
                     println("Equation -> " + equation.toAnnotatedString())
                     //simultaneousEquationsMap[it] = replaceTokens(equation, eTokenToEDotTokenMap)
                     tokenToElementMap.put((equation.leftSide as Token), it)
-                    //if (displayIntermediateResults) results.add(buildAnnotatedString { append("dot equation -> ") ; equation.toAnnotatedString()})
+                    if (displayIntermediateResults) intermediateResults.add(Pair("dot equation -> ",equation))
                 }
                 val solvedEquations = solve(equations)
                 solvedEquations.forEach {equation ->
+                    if (displayIntermediateResults)intermediateResults.add(Pair("2-", equation))
                     val dotRightSide = replaceTokensInExpressionWithDotTokens(equation.rightSide, eTokenToEDotTokenMap)
+                    if (displayIntermediateResults) intermediateResults.add(Pair("3-", Equation(equation.leftSide, dotRightSide)))
                     println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
                     println("eTokenToEDotToken map")
                     eTokenToEDotTokenMap.forEach{key, value -> println("${key.toAnnotatedString()} --> ${value.toAnnotatedString()}")}
@@ -1002,7 +1012,6 @@ class BondGraph(var name: String) {
             for (element in elementsList ) {
                 var equation = (element as OnePort).deriveEquation()
                 println("derived equation for element ${element.displayId}  -> ${equation.toAnnotatedString()}")
-                if (displayIntermediateResults) results.add(AnnotatedString("3- ") + equation.toAnnotatedString())
                 equations.add(equation)
             }
 
@@ -1010,10 +1019,16 @@ class BondGraph(var name: String) {
 
                 if (derivativeCausalityElements.size > 0) {
                     println("??????????????????????????????????????????????????????????????????????????")
-                    equations.forEach { println("${it.toAnnotatedString()}") }
+                    equations.forEach {
+                        println("${it.toAnnotatedString()}")
+                        if (displayIntermediateResults) intermediateResults.add(Pair("4-", it))
+
+                    }
                     val solvedEquations = solve(equations)
                     solvedEquations.forEach {
-                        results.add(it.toAnnotatedString())
+                        println(it.toAnnotatedString())
+                        if (displayIntermediateResults)intermediateResults.add(Pair("5-", it))
+                        finalResults.add(it)
                     }
                    /* equations.forEach {
                         val solved = solve(arrayListOf(it))
@@ -1021,7 +1036,9 @@ class BondGraph(var name: String) {
                     }*/
                 } else {
                     equations.forEach {
-                        results.add(it.toAnnotatedString())
+                        println(it.toAnnotatedString())
+                        if (displayIntermediateResults)intermediateResults.add(Pair("5-", it))
+                        finalResults.add(it)
                     }
                 }
 
@@ -1034,6 +1051,7 @@ class BondGraph(var name: String) {
             results.clear()
             println("BadGraphError $e")
             results.add(e.message.toString())
+            results.add(e.stackTraceToString())
         }
         catch (e: AlgebraException){
 
@@ -1042,10 +1060,12 @@ class BondGraph(var name: String) {
             println("AlgebraException: ${e.message.toString()} ")
             println("calling results.add")
             results.add(e.message.toString())
+            results.add(e.stackTraceToString())
             println("done calling results.add")
         }
 
         showResults()
+        showComposedResults()
     }
 
 

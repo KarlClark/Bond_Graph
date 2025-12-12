@@ -138,8 +138,14 @@ fun multiply(token: Token, term: Term): Expr {
 }
 
 fun multiply(token: Token, sum: Sum): Expr {
+    println("multiply(Token, Sum)  token = ${token.toAnnotatedString()}, sum = ${sum.toAnnotatedString()}")
     if (sum.plusTerms.size + sum.minusTerms.size == 0){
         return Number(0.0)
+    }
+
+    if (sum.plusTerms.isEmpty() && sum.minusTerms.size == 1){
+        val term = token.multiply(negate(sum))
+        return createNegativeExpression(term)
     }
 
     if (isStateVariableExpr(token)){
@@ -217,6 +223,11 @@ fun multiply(number: Number, sum: Sum): Expr {
         return multiply(number, sum.plusTerms[0])
     }
 
+    if (sum.plusTerms.isEmpty() && sum.minusTerms.size == 1){
+        val expr = number.multiply(negate(sum))
+        return createNegativeExpression(expr)
+    }
+
     val newSum = Sum()
 
     /*newSum.plusTerms.addAll(multiplyList(number, sum.plusTerms))
@@ -285,6 +296,11 @@ fun multiply(term: Term, sum: Sum): Expr {
 
     if (sum.plusTerms.size == 1 && sum.minusTerms.isEmpty()){
         return multiply(term, sum.plusTerms[0])
+    }
+
+    if (sum.plusTerms.isEmpty() && sum.minusTerms.size == 1){
+        val expr = term.multiply(negate(sum))
+        return createNegativeExpression(expr)
     }
 
 

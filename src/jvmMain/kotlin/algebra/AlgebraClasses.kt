@@ -708,13 +708,17 @@ class Sum(): Expr {
 
 
     override fun toAnnotatedString(exp: Int): AnnotatedString {
-        return buildAnnotatedString {
+        //println("sum.toAnnotatedString called")
+        val string = buildAnnotatedString {
             var cnt = 0
+            //println("plusTerms size = ${plusTerms.size}")
             plusTerms.forEach {
                 if (cnt > 0) {
                     append (" + ")
                 }
+                //println(" it ${it::class.simpleName}, cnt = $cnt")
                 cnt++
+
                 append (it.toAnnotatedString())
             }
 
@@ -727,6 +731,8 @@ class Sum(): Expr {
                 if (it is Sum) append(")")
             }
         }
+        //println("string = $string")
+        return string
     }
 
     /*
@@ -962,10 +968,12 @@ class Matrix private constructor(val data: ArrayList<ArrayList<Expr>>) {
                 println("coeffDet = ${coeffDet.toAnnotatedString()}: ${coeffDet::class.simpleName}")
 
                 if (coeffDet is Sum) {
-                    println("common denominator = ${convertSumToCommonDenominator((coeffDet as Sum)).toAnnotatedString()}")
+                    //println("common denominator = ${convertSumToCommonDenominator((coeffDet as Sum)).toAnnotatedString()}")
                 }
 
-                equations.add(Equation(variables[matrixIndex], constMatrixDet.divide(coeffDet)))
+                val equation = Equation(variables[matrixIndex], constMatrixDet.divide(coeffDet))
+                println("solverCramer equation = ${equation.toAnnotatedString()}")
+                equations.add(equation)
             }
             return equations
         }
@@ -1033,10 +1041,11 @@ class Matrix private constructor(val data: ArrayList<ArrayList<Expr>>) {
                     println("det column = $column")
                     if (addIt) {
                         val cofactorDet = cofactor(0, column).det(factored)
+                        println("|||||||||||||||  det  cofactor matrix is  |||||||||||||||||||||||||||||||")
                         cofactor(0,column).printOut()
                         //val product = Term().multiply(data[0][column]).multiply(cofactorDet)
                         val product = if (factored) multiply_f (data[0][column],(cofactorDet)) else multiply (data[0][column],(cofactorDet))
-                        println("det = ${det.toAnnotatedString()}  element = ${data[0][column].toAnnotatedString()},  cofactorDet = ${cofactorDet.toAnnotatedString()}  add product = ${product.toAnnotatedString()}")
+                        println("det = ${det.toAnnotatedString()}  element = ${data[0][column].toAnnotatedString()},  cofactorDet = ${cofactorDet.toAnnotatedString()}  add product = ${product.toAnnotatedString()},  factored = $factored")
                         det = det.add(product)
                         println("new det = ${det.toAnnotatedString()}")
                     } else {
@@ -1115,6 +1124,7 @@ class Matrix private constructor(val data: ArrayList<ArrayList<Expr>>) {
 
 
     fun printOut(){
+        println("-------------------------------------------------------------------------------------")
         for (i in 0 until data.size){
             for (j in 0 until data.size){
                 if (j != 0) print(", ")
@@ -1122,5 +1132,7 @@ class Matrix private constructor(val data: ArrayList<ArrayList<Expr>>) {
             }
             println()
         }
+        println("-------------------------------------------------------------------------------------")
     }
+
 }

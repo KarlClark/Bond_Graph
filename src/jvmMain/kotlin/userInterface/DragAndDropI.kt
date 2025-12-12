@@ -620,5 +620,11 @@ internal class StateInfo {
     //var valueWindowIsVisible by mutableStateOf(true)
     var valuesWindowOnTop by mutableStateOf(false)
     var resultsWindowOnTop by mutableStateOf(false)
+    var testWindowState by mutableStateOf(WindowState())
+    var testWindowOnTop by mutableStateOf(false)
+    var showTestWindow by mutableStateOf(false)
+    var composedResultsWindowOnTop by mutableStateOf(false)
+    var composedResultsWindowState by mutableStateOf(WindowState(width = 1400.dp, height = 800.dp))
+    var showComposedResultsWIndow by mutableStateOf(false)
     val xmap by mutableStateMapOf(1 to 'b', 2 to 'c' )
 }
