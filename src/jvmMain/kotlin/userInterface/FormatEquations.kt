@@ -1,7 +1,6 @@
 package userInterface
 import algebra.Token
 import algebra.Number
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -24,13 +23,9 @@ import androidx.compose.material.*
 import algebra.*
 import algebra.operations.multiply_f
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import bondgraph.AlgebraException
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.serialization.modules.EmptySerializersModule
 import java.util.LinkedHashMap
 
 /*
@@ -47,11 +42,13 @@ val signFontSize = tokenFontSize.times(1)
 val sourceSubscriptHeight = tokenHeight.times(.5f)
 val sourceSubscriptFontSize = tokenFontSize.times(.8)
 val subscriptBottomPadding = (tokenFontSize.value * .1).dp
-val signPadding = termHeight.div(5f)
+val tokenSignPadding = termHeight.div(5f)
+val termSignPadding = termHeight.div(2f)
 val minusSignBottomPadding = termHeight.times(.08f)
 val equationBottomPadding = 8.dp
 val fontFamily = FontFamily.Serif
 val minusSign = "\u2013"
+val dot = "\u0307"
 
 
 
@@ -180,7 +177,7 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
 
                 // print left side of equation and equal sign
                 composeToken(eq.leftSide as Token, "")
-                composeSign("=")
+                composeSign("=", termSignPadding)
 
                 if (rightSide !is Sum) {
                     composeExpression(rightSide)
@@ -225,10 +222,10 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
 
                         if (pair.first != null) {
                             if (pair.second) {
-                                composeSign(minusSign)
+                                composeSign(minusSign, termSignPadding)
                             } else {
                                 if (index > 0) {
-                                    composeSign("+")
+                                    composeSign("+", termSignPadding)
                                 }
                             }
 
@@ -239,9 +236,9 @@ fun composeEquations(equations: ArrayList<Equation>, dotTokenToTokenMap: Map<Tok
                     // now compose the source expressions.
                     sourceExpressions.forEach { pair ->
                         if (pair.second) {
-                            composeSign(minusSign)
+                            composeSign(minusSign, termSignPadding)
                         } else {
-                            composeSign("+")
+                            composeSign("+", termSignPadding)
                         }
                         composeExpression(pair.first)
                     }
@@ -287,7 +284,7 @@ fun composeEquation(equation: Equation){
 
     ) {
         composeExpression(equation.leftSide)
-        composeSign("=")
+        composeSign("=", termSignPadding)
         composeExpression(equation.rightSide)
     }
 }
@@ -446,6 +443,12 @@ fun composeToken (
 ) {
     var name: String
     var sourceString: String = ""
+    var charHeight = tokenHeight
+    var fontHeight = tokenFontSize
+    if (token.powerVar || token.energyVar || token.differential){
+        charHeight = termHeight
+        fontHeight = (charHeight.value).sp
+    }
 
     // Determine the letter name.  Start with the name of the token.  Then, if it's a differential token,
     // add the dot over the top of the letter. Else if the name is a source (Se, Sf) then change the name
@@ -453,7 +456,7 @@ fun composeToken (
     val tokenName = token.name.toString()
     name = tokenName
     if (token.differential) {
-        name = tokenName.toString() + "\u0307"
+        name = tokenName.toString() + dot
     } else {
         if (tokenName == "Se") {
             name = "S"
@@ -493,9 +496,9 @@ fun composeToken (
                     //.height(tokenHeight)
                     //. background(Color.Green)
                     //.wrapContentHeight(align = Alignment.Top)
-                    .height(tokenHeight)
+                    .height(charHeight)
                     .padding(all = 0.dp)
-                , textStyle = TextStyle(fontSize = tokenFontSize, fontFamily = fontFamily)
+                , textStyle = TextStyle(fontSize = fontHeight, fontFamily = fontFamily)
                 ,
 
             )
@@ -669,8 +672,9 @@ This function will be given a plus sign or minus sign, which is placed in a text
 padding on each side.  Minus signs are given some bottom since they seem to print a little low
 in my opinion.
  */
+
 @Composable
-fun composeSign(sign: String) {
+fun composeSign(sign: String, padding: Dp) {
     val bottomPadding = if (sign == minusSign) minusSignBottomPadding else 0.dp
     Column(
         Modifier
@@ -686,7 +690,7 @@ fun composeSign(sign: String) {
             .width(IntrinsicSize.Min)
             .height(tokenHeight)
             //.background(Color.Red)
-            .padding(start = signPadding, end = signPadding, bottom = bottomPadding)
+            .padding(start = padding, end = padding, bottom = bottomPadding)
         )
     }
 }
@@ -701,6 +705,7 @@ vertically in the row.
  */
 @Composable
 fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
+    println("composeSum(sum, boolean) sum = ${sum.toAnnotatedString()}")
     Row (Modifier
         //.fillMaxWidth()
         .width(IntrinsicSize.Min)
@@ -709,7 +714,14 @@ fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
     )
     {
         println("composeSum(sum) sum = ${sum.toAnnotatedString()}")
-        val  height = if (expressionContainsFractions(sum)) termHeight.times(2) else termHeight
+        var height = termHeight
+        var padding = tokenSignPadding
+        if (sumContainsStateExpressions(sum)){
+            termHeight.times(2)
+            padding = termSignPadding
+        }
+
+        println("composeSum padding = $padding")
 
         if (encloseInParentheses){
             composeChar("(", height )
@@ -717,7 +729,7 @@ fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
 
         sum.plusTerms.forEachIndexed { index, expr ->
             if (index > 0) {
-                composeSign("+")
+                composeSign("+", padding)
             }
             println ("composeSum expr = ${expr.toAnnotatedString()}: ${expr::class.simpleName}")
             when (expr) {
@@ -729,7 +741,7 @@ fun composeSum(sum: Sum, encloseInParentheses: Boolean) {
         }
 
         sum.minusTerms.forEach { expr ->
-            composeSign(minusSign)
+            composeSign(minusSign, padding)
             println ("composeSum expr = ${expr.toAnnotatedString()}: ${expr::class.simpleName}")
             when (expr) {
                 is Token -> composeToken(expr, "")
